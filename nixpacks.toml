@@ -1,3 +1,2 @@
-# better-sqlite3 compila via node-gyp quando não há binário pré-compilado (ex.: arm64)
-[phases.setup]
-aptPkgs = ["...", "python3", "build-essential"]
+[start]
+cmd = "npm run start:prod"

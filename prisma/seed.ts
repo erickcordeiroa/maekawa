@@ -68,8 +68,10 @@ async function main() {
   await db.plan.deleteMany()
   await db.transaction.deleteMany()
   await db.user.deleteMany()
-  // Reinicia os IDs (alunos 1..10 como no protótipo). Específico do SQLite; no MySQL use TRUNCATE.
-  await db.$executeRawUnsafe("DELETE FROM sqlite_sequence").catch(() => {})
+  // Reinicia os IDs (alunos 1..10 como no protótipo).
+  for (const t of ["Attendance", "Payment", "Graduation", "Student", "ClassGroup", "Plan", "Transaction", "User"]) {
+    await db.$executeRawUnsafe(`ALTER TABLE \`${t}\` AUTO_INCREMENT = 1`)
+  }
 
   await db.user.create({ data: { name: "Murilo K. Maekawa", email: "murilo@academia.com.br", passwordHash: await hashPassword("oss12345") } })
 

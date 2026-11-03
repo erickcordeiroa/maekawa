@@ -1,5 +1,3 @@
-// Schema portável: evita recursos exclusivos do SQLite para que a migração
-// para MySQL seja só trocar o `provider` (e o adapter em src/server/db.ts).
 // Campos "enum" são String validados pelo domínio (src/domain).
 
 generator client {
@@ -8,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
 }
 
 model User {
@@ -43,7 +41,7 @@ model Student {
   shortName     String
   phone         String       @unique // apenas dígitos
   birthDate     DateTime
-  address       String
+  address       String       @db.VarChar(500)
   guardianName  String?
   guardianPhone String?
   belt          String // branca | cinza | ... | preta
@@ -108,7 +106,7 @@ model Attendance {
 model Transaction {
   id          Int      @id @default(autoincrement())
   date        DateTime
-  description String
+  description String   @db.VarChar(500)
   kind        String // entrada | saida
   category    String
   amountCents Int // sempre positivo; o sinal vem de `kind`

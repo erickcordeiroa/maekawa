@@ -7,7 +7,7 @@ Porta fiel do protótipo HTML — o sistema visual está documentado em [`DESIGN
 
 ```bash
 npm install            # também gera o Prisma Client
-npx prisma migrate dev # cria prisma/dev.db (SQLite)
+npx prisma migrate dev # aplica as migrations no MySQL do DATABASE_URL
 npm run db:seed        # dados do protótipo, ancorados na data de hoje
 npm run dev
 ```
@@ -34,16 +34,6 @@ src/
   proxy.ts             checagem otimista de sessão (Next 16: antigo middleware)
 prisma/                schema, migrations, seed
 ```
-
-## Migrando para MySQL
-
-1. `npm i @prisma/adapter-mariadb`
-2. `prisma/schema.prisma`: `provider = "mysql"`
-3. `src/server/prisma-client.ts`: trocar `PrismaBetterSqlite3` por `new PrismaMariaDb(process.env.DATABASE_URL!)`
-4. `.env`: `DATABASE_URL="mysql://usuario:senha@host:3306/maekawa"`
-5. apagar `prisma/migrations` (são de SQLite) e rodar `npx prisma migrate dev --name init`
-
-Repositórios, serviços e telas não mudam.
 
 ## Ferramentas instaladas
 
