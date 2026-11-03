@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-03T08:00:00Z",
+  "title": "Design System: Portal Murilo K. Maekawa BJJ",
+  "extensions": {
+    "colorMeta": {
+      "tatame-black": { "role": "primary", "displayName": "Preto Tatame" },
+      "belt-gold": { "role": "primary", "displayName": "Dourado Faixa" },
+      "alert-red": { "role": "secondary", "displayName": "Vermelho Alerta" },
+      "ground": { "role": "neutral", "displayName": "Chão" }
+    },
+    "shadows": [
+      { "name": "floating", "value": "0 8px 24px rgba(0,0,0,.25)", "purpose": "Toast e menus que sobrepõem a página." }
+    ],
+    "motion": [
+      { "name": "toast", "value": "250ms ease", "purpose": "Entrada do toast." }
+    ],
+    "breakpoints": [ { "name": "shell-collapse", "value": "820px" } ]
+  },
+  "components": [
+    { "name": "Gold Button", "kind": "button", "refersTo": "button-gold", "description": "Ação principal.", "html": "<button class=\"ds-btn-gold\">Marcar como pago</button>", "css": ".ds-btn-gold{background:#F3C519;color:#0E0E0E;min-height:44px;padding:0 18px;border-radius:8px;border:1.5px solid transparent;font:700 15px Inter,sans-serif;cursor:pointer}.ds-btn-gold:hover{background:#E6B80C}.ds-btn-gold:focus-visible{outline:3px solid #F3C519;outline-offset:2px}" },
+    { "name": "Dark Button", "kind": "button", "refersTo": "button-dark", "description": "Confirmação forte.", "html": "<button class=\"ds-btn-dark\">Novo aluno</button>", "css": ".ds-btn-dark{background:#0E0E0E;color:#F3C519;min-height:44px;padding:0 18px;border-radius:8px;border:0;font:600 15px Oswald,sans-serif;letter-spacing:1px;text-transform:uppercase;cursor:pointer}.ds-btn-dark:focus-visible{outline:3px solid #F3C519;outline-offset:2px}" },
+    { "name": "Input", "kind": "input", "refersTo": "input", "description": "Campo de formulário.", "html": "<input class=\"ds-input\" placeholder=\"(13) 90000-0000\">", "css": ".ds-input{height:46px;padding:0 12px;border:1.5px solid #CFCFCF;border-radius:8px;font:16px Inter,sans-serif;background:#fff}.ds-input:focus{outline:3px solid #F3C519;outline-offset:1px;border-color:#0E0E0E}" },
+    { "name": "Chip", "kind": "chip", "refersTo": "chip-active", "description": "Filtro.", "html": "<button class=\"ds-chip\" aria-pressed=\"true\">Todas</button> <button class=\"ds-chip\">Azul</button>", "css": ".ds-chip{min-height:40px;padding:0 14px;border-radius:999px;font:600 14px Inter,sans-serif;background:#fff;border:1.5px solid #CFCFCF;cursor:pointer}.ds-chip[aria-pressed=true]{background:#0E0E0E;color:#F3C519;border-color:#0E0E0E}" },
+    { "name": "Belt", "kind": "custom", "description": "Faixa com graus.", "html": "<span class=\"ds-belt\"><span class=\"ds-bar\"><i></i><i></i></span></span>", "css": ".ds-belt{display:inline-flex;justify-content:flex-end;width:96px;height:16px;border-radius:3px;border:1px solid #9A9A9A;overflow:hidden;background:#1F4FB5}.ds-bar{display:inline-flex;gap:3px;justify-content:center;width:34px;height:100%;padding:0 3px;background:#0E0E0E}.ds-bar i{width:3px;height:100%;background:#fff}" }
+  ],
+  "narrative": {
+    "northStar": "O Tatame Preto",
+    "keyCharacteristics": ["Contraste alto preto/dourado; vermelho reservado para atraso, falta e alerta.", "Plano por padrão: sem sombras em cartões, profundidade por inversão de cor.", "A faixa (belt) é o componente-assinatura.", "Bordas de destaque grossas em dourado separam marca de conteúdo."],
+    "rules": [
+      { "name": "The Red Means Late Rule", "body": "Vermelho só aparece para estado negativo. Nunca como decoração.", "section": "colors" },
+      { "name": "The Oswald Shouts Rule", "body": "Oswald é sempre caixa-alta e só para títulos, números e botões grandes.", "section": "typography" },
+      { "name": "The Flat Mat Rule", "body": "Nada no fluxo da página flutua. Sombra só para o que sobrepõe a página.", "section": "elevation" }
+    ]
+  }
+}

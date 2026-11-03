@@ -1,0 +1,114 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* Tokens da marca (ver DESIGN.md). Os nomes do shadcn apontam para eles. */
+@theme inline {
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-display: var(--font-oswald), sans-serif;
+  --font-heading: var(--font-oswald), sans-serif;
+
+  --color-ink: #0e0e0e;
+  --color-gold: #f3c519;
+  --color-gold-hover: #e6b80c;
+  --color-gold-soft: #fff6d1;
+  --color-gold-deep: #8a6f00;
+  --color-pending: #fff1b8;
+  --color-pending-ink: #5a4500;
+  --color-red: #ce1317;
+  --color-red-ink: #9e0d10;
+  --color-red-soft: #fce4e4;
+  --color-ground: #f4f4f2;
+  --color-line: #e6e6e6;
+  --color-edge: #cfcfcf;
+  --color-ink-muted: #4a4a4a;
+  --color-ink-quiet: #595959;
+  --color-on-dark: #d6d6d6;
+  --color-panel: #f7f7f5;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-2xl: 14px;
+}
+
+:root {
+  --background: #f4f4f2;
+  --foreground: #0e0e0e;
+  --card: #ffffff;
+  --card-foreground: #0e0e0e;
+  --popover: #ffffff;
+  --popover-foreground: #0e0e0e;
+  --primary: #0e0e0e;
+  --primary-foreground: #f3c519;
+  --secondary: #f4f4f2;
+  --secondary-foreground: #0e0e0e;
+  --muted: #f4f4f2;
+  --muted-foreground: #4a4a4a;
+  --accent: #f4f4f2;
+  --accent-foreground: #0e0e0e;
+  --destructive: #9e0d10;
+  --border: #cfcfcf;
+  --input: #cfcfcf;
+  --ring: #f3c519;
+  --radius: 8px;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html,
+  body {
+    @apply bg-ground font-sans text-ink antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply m-0 font-display font-semibold uppercase;
+  }
+  a {
+    color: inherit;
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-gold);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--color-gold);
+    color: var(--color-ink);
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@utility display {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}

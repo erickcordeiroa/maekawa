@@ -1,0 +1,118 @@
+// Schema portável: evita recursos exclusivos do SQLite para que a migração
+// para MySQL seja só trocar o `provider` (e o adapter em src/server/db.ts).
+// Campos "enum" são String validados pelo domínio (src/domain).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model Plan {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique // Mensal | Trimestral | Kids
+  description String
+  priceCents  Int
+  students    Student[]
+}
+
+model ClassGroup {
+  id          Int          @id @default(autoincrement())
+  slug        String       @unique // manha | kids | noite
+  name        String
+  startTime   String // "19:00"
+  position    Int          @default(0)
+  students    Student[]
+  attendances Attendance[]
+}
+
+model Student {
+  id            Int          @id @default(autoincrement())
+  fullName      String
+  shortName     String
+  phone         String       @unique // apenas dígitos
+  birthDate     DateTime
+  address       String
+  guardianName  String?
+  guardianPhone String?
+  belt          String // branca | cinza | ... | preta
+  stripes       Int          @default(0)
+  isKids        Boolean      @default(false)
+  status        String       @default("ativo") // ativo | pendente
+  dueDay        Int          @default(5)
+  memberSince   DateTime     @default(now())
+  planId        Int
+  plan          Plan         @relation(fields: [planId], references: [id])
+  classGroupId  Int?
+  classGroup    ClassGroup?  @relation(fields: [classGroupId], references: [id])
+  graduations   Graduation[]
+  payments      Payment[]
+  attendances   Attendance[]
+  createdAt     DateTime     @default(now())
+
+  @@index([belt])
+}
+
+model Graduation {
+  id        Int      @id @default(autoincrement())
+  studentId Int
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  kind      String // inicio | grau | promocao
+  belt      String
+  stripes   Int
+  date      DateTime
+  createdAt DateTime @default(now())
+
+  @@index([studentId, date])
+}
+
+model Payment {
+  id          Int       @id @default(autoincrement())
+  studentId   Int
+  student     Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  reference   String // "2026-11"
+  amountCents Int
+  dueDate     DateTime
+  paidAt      DateTime?
+
+  @@unique([studentId, reference])
+  @@index([reference])
+}
+
+model Attendance {
+  id           Int        @id @default(autoincrement())
+  studentId    Int
+  student      Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  classGroupId Int
+  classGroup   ClassGroup @relation(fields: [classGroupId], references: [id])
+  date         DateTime // dia da aula (00:00 local)
+  present      Boolean
+  source       String     @default("manual") // manual | qr
+  checkedInAt  DateTime?
+
+  @@unique([studentId, classGroupId, date])
+  @@index([date])
+}
+
+model Transaction {
+  id          Int      @id @default(autoincrement())
+  date        DateTime
+  description String
+  kind        String // entrada | saida
+  category    String
+  amountCents Int // sempre positivo; o sinal vem de `kind`
+  createdAt   DateTime @default(now())
+
+  @@index([date])
+}
