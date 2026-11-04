@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Field, FieldError, FieldLabel } from "@/components/ui/field"
 import { graduationSchema } from "@/lib/validations/graduation"
-import { addStripeAction, promoteAction } from "@/server/actions/student.actions"
+import { addStripeAction, confirmEnrollmentAction, promoteAction } from "@/server/actions/student.actions"
 import type { ActionResult } from "@/server/actions/result"
 
 type Props = { studentId: number; canAddStripe: boolean; nextBelt: string | null; defaultDate: string }
@@ -49,4 +49,26 @@ export function GraduationPanel({ studentId, canAddStripe, nextBelt, defaultDate
 
 export function EditButton() {
   return <Button variant="outline" onClick={() => toast("Edição de dados (em breve no sistema)")}>Editar</Button>
+}
+
+export function ConfirmEnrollmentButton({ studentId }: { studentId: number }) {
+  const [pending, startTransition] = useTransition()
+  return (
+    <Button
+      disabled={pending}
+      onClick={() =>
+        startTransition(async () => {
+          const r = await confirmEnrollmentAction({ studentId })
+          if (r.ok) toast(r.message)
+          else toast.error(r.error)
+        })
+      }
+    >
+      {pending ? "Confirmando…" : "Confirmar matrícula"}
+    </Button>
+  )
+}
+
+export function PrintButton() {
+  return <Button variant="outline" onClick={() => window.print()} className="print:hidden">Imprimir</Button>
 }

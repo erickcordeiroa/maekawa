@@ -11,17 +11,20 @@ import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Field, FieldError, FieldLabel } from "@/components/ui/field"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Chip, ChipGroup } from "@/components/brand/chip"
+import { TermDocument } from "@/components/brand/term-document"
 import { IconCheck } from "@/components/brand/icons"
 import { BELTS, BELT_IDS, stripesText } from "@/domain/belts"
+import { maskCpf } from "@/domain/cpf"
+import { TERM_VERSION } from "@/domain/term"
 import { brl, maskPhone } from "@/lib/format"
-import { DUE_DAYS, enrollmentSchema, STRIPE_OPTIONS, type EnrollmentFormValues, type EnrollmentInput } from "@/lib/validations/enrollment"
+import { ddmmyyyy, dateOnly } from "@/lib/dates"
+import { DUE_DAYS, enrollmentSchema, isMinorOn, STRIPE_OPTIONS, type EnrollmentFormValues, type EnrollmentInput } from "@/lib/validations/enrollment"
 import { enrollAction } from "@/server/actions/student.actions"
 
 type Plan = { name: string; description: string; priceCents: number }
 
 const EMPTY: EnrollmentFormValues = {
-  fullName: "", birthDate: "", phone: "", address: "", isMinor: false, guardianName: "", guardianPhone: "",
+  fullName: "", birthDate: "", phone: "", cpf: "", address: "", guardianName: "", guardianPhone: "", guardianCpf: "",
   belt: "branca", stripes: "0", plan: "Mensal", dueDay: "5", accepted: false as unknown as true,
 }
 
@@ -40,8 +43,8 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
 const grid = "grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-4"
 
 function TextField({
-  control, name, label, className, phone, ...input
-}: { control: Control<EnrollmentFormValues, unknown, EnrollmentInput>; name: FieldPath<EnrollmentFormValues>; label: string; className?: string; phone?: boolean } & React.ComponentProps<"input">) {
+  control, name, label, className, mask, ...input
+}: { control: Control<EnrollmentFormValues, unknown, EnrollmentInput>; name: FieldPath<EnrollmentFormValues>; label: string; className?: string; mask?: (v: string) => string } & React.ComponentProps<"input">) {
   return (
     <Controller
       name={name}
@@ -56,7 +59,7 @@ function TextField({
             ref={field.ref}
             onBlur={field.onBlur}
             value={String(field.value ?? "")}
-            onChange={(e) => field.onChange(phone ? maskPhone(e.target.value) : e.target.value)}
+            onChange={(e) => field.onChange(mask ? mask(e.target.value) : e.target.value)}
             aria-invalid={fieldState.invalid}
           />
           <FieldError errors={[fieldState.error]} />
@@ -70,7 +73,8 @@ export function EnrollmentForm({ plans }: { plans: Plan[] }) {
   const [sent, setSent] = useState(false)
   const [pending, startTransition] = useTransition()
   const form = useForm<EnrollmentFormValues, unknown, EnrollmentInput>({ resolver: zodResolver(enrollmentSchema), defaultValues: EMPTY })
-  const isMinor = useWatch({ control: form.control, name: "isMinor" })
+  const v = useWatch({ control: form.control })
+  const isMinor = isMinorOn(v.birthDate ?? "")
 
   const onSubmit = form.handleSubmit(() =>
     startTransition(async () => {
@@ -102,26 +106,18 @@ export function EnrollmentForm({ plans }: { plans: Plan[] }) {
         <div className={grid}>
           <TextField control={c} name="fullName" label="Nome completo *" autoComplete="name" className="col-span-full" />
           <TextField control={c} name="birthDate" label="Data de nascimento *" type="date" />
-          <TextField control={c} name="phone" label="Telefone *" type="tel" inputMode="numeric" placeholder="(13) 90000-0000" phone />
+          <TextField control={c} name="cpf" label={isMinor ? "CPF do aluno (opcional)" : "CPF *"} inputMode="numeric" placeholder="000.000.000-00" mask={maskCpf} />
+          <TextField control={c} name="phone" label="Telefone *" type="tel" inputMode="numeric" placeholder="(13) 90000-0000" mask={maskPhone} />
           <TextField control={c} name="address" label="Endereço *" placeholder="Rua, número, bairro, cidade" autoComplete="street-address" className="col-span-full" />
         </div>
-        <div className="flex flex-col gap-2.5">
-          <span className="text-sm font-semibold">O aluno é menor de 18 anos?</span>
-          <Controller
-            name="isMinor"
-            control={c}
-            render={({ field }) => (
-              <ChipGroup aria-label="Aluno menor de idade">
-                <Chip pressed={!field.value} onClick={() => field.onChange(false)}>Não, é adulto</Chip>
-                <Chip pressed={field.value} onClick={() => field.onChange(true)}>Sim, é menor</Chip>
-              </ChipGroup>
-            )}
-          />
-        </div>
         {isMinor && (
-          <div className={cn(grid, "rounded-lg bg-gold-soft p-[18px]")}>
-            <TextField control={c} name="guardianName" label="Nome do responsável *" />
-            <TextField control={c} name="guardianPhone" label="Contato do responsável *" type="tel" inputMode="numeric" placeholder="(13) 90000-0000" phone />
+          <div className="flex flex-col gap-3 rounded-lg bg-gold-soft p-[18px]">
+            <p className="m-0 text-sm font-semibold">Aluno menor de 18 anos: o responsável legal preenche os dados abaixo e aceita o termo.</p>
+            <div className={grid}>
+              <TextField control={c} name="guardianName" label="Nome do responsável *" className="col-span-full" />
+              <TextField control={c} name="guardianCpf" label="CPF do responsável *" inputMode="numeric" placeholder="000.000.000-00" mask={maskCpf} />
+              <TextField control={c} name="guardianPhone" label="Contato do responsável *" type="tel" inputMode="numeric" placeholder="(13) 90000-0000" mask={maskPhone} />
+            </div>
           </div>
         )}
       </Step>
@@ -206,21 +202,40 @@ export function EnrollmentForm({ plans }: { plans: Plan[] }) {
         />
       </Step>
 
-      <Controller
-        name="accepted"
-        control={c}
-        render={({ field, fieldState }) => (
-          <Field data-invalid={fieldState.invalid}>
-            <div className="flex items-start gap-3">
-              <Checkbox id="accepted" checked={field.value === true} onCheckedChange={(v) => field.onChange(v === true)} aria-invalid={fieldState.invalid} className="mt-0.5" />
-              <label htmlFor="accepted" className="text-sm leading-normal">
-                Declaro que as informações são verdadeiras e estou ciente das regras da academia e do termo de responsabilidade para a prática esportiva.
-              </label>
-            </div>
-            <FieldError errors={[fieldState.error]} />
-          </Field>
-        )}
-      />
+      <Step n={4} title="Termo de responsabilidade">
+        <p className="m-0 text-sm text-ink-muted">Leia o termo até o fim. Os dados de identificação vêm do que você preencheu acima.</p>
+        <div role="region" aria-label="Texto do termo de responsabilidade" tabIndex={0} className="max-h-[360px] overflow-y-auto rounded-lg border-[1.5px] border-edge bg-white p-[18px]">
+          <TermDocument
+            isMinor={isMinor}
+            identification={[
+              ["Nome completo", v.fullName ?? ""],
+              ["Data de nascimento", v.birthDate ? ddmmyyyy(dateOnly(v.birthDate)) : ""],
+              ["CPF", v.cpf ?? ""],
+              ["Telefone", v.phone ?? ""],
+              ["Endereço", v.address ?? ""],
+              ...(isMinor ? ([["Responsável", v.guardianName ?? ""], ["CPF do responsável", v.guardianCpf ?? ""]] as [string, string][]) : []),
+            ]}
+          />
+        </div>
+        <Controller
+          name="accepted"
+          control={c}
+          render={({ field, fieldState }) => (
+            <Field data-invalid={fieldState.invalid}>
+              <div className="flex items-start gap-3">
+                <Checkbox id="accepted" checked={field.value === true} onCheckedChange={(x) => field.onChange(x === true)} aria-invalid={fieldState.invalid} className="mt-0.5" />
+                <label htmlFor="accepted" className="text-sm leading-normal">
+                  {isMinor
+                    ? "Sou pai, mãe ou responsável legal pelo aluno, li e aceito o Termo de Responsabilidade e Ciência e autorizo a prática do Jiu-Jitsu. Declaro que as informações são verdadeiras."
+                    : "Li e aceito o Termo de Responsabilidade e Ciência e declaro que as informações são verdadeiras."}
+                </label>
+              </div>
+              <FieldError errors={[fieldState.error]} />
+            </Field>
+          )}
+        />
+        <p className="m-0 text-[13px] text-ink-quiet">O aceite fica registrado com data, hora e versão do termo ({TERM_VERSION}).</p>
+      </Step>
 
       <Button type="submit" variant="dark" size="lg" disabled={pending} className="min-h-14 text-xl">
         {pending ? "Enviando…" : "Enviar matrícula"}

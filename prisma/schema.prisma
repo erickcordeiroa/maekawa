@@ -10,11 +10,12 @@ datasource db {
 }
 
 model User {
-  id           Int      @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
   name         String
-  email        String   @unique
+  email        String    @unique
   passwordHash String
-  createdAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
+  approvals    Student[] @relation("StudentApprovedBy")
 }
 
 model Plan {
@@ -36,30 +37,52 @@ model ClassGroup {
 }
 
 model Student {
-  id            Int          @id @default(autoincrement())
+  id            Int              @id @default(autoincrement())
   fullName      String
   shortName     String
-  phone         String       @unique // apenas dígitos
+  phone         String           @unique // apenas dígitos
+  cpf           String?          @unique @db.Char(11) // apenas dígitos; obrigatório para adultos
   birthDate     DateTime
-  address       String       @db.VarChar(500)
+  address       String           @db.VarChar(500)
   guardianName  String?
   guardianPhone String?
+  guardianCpf   String?          @db.Char(11)
   belt          String // branca | cinza | ... | preta
-  stripes       Int          @default(0)
-  isKids        Boolean      @default(false)
-  status        String       @default("ativo") // ativo | pendente
-  dueDay        Int          @default(5)
-  memberSince   DateTime     @default(now())
+  stripes       Int              @default(0)
+  isKids        Boolean          @default(false)
+  status        String           @default("ativo") // ativo | pendente
+  dueDay        Int              @default(5)
+  memberSince   DateTime         @default(now())
+  approvedAt    DateTime? // matrícula confirmada pela academia
+  approvedById  Int?
+  approvedBy    User?            @relation("StudentApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
   planId        Int
-  plan          Plan         @relation(fields: [planId], references: [id])
+  plan          Plan             @relation(fields: [planId], references: [id])
   classGroupId  Int?
-  classGroup    ClassGroup?  @relation(fields: [classGroupId], references: [id])
+  classGroup    ClassGroup?      @relation(fields: [classGroupId], references: [id])
   graduations   Graduation[]
   payments      Payment[]
   attendances   Attendance[]
-  createdAt     DateTime     @default(now())
+  terms         TermAcceptance[]
+  createdAt     DateTime         @default(now())
 
   @@index([belt])
+}
+
+// Registro do aceite do Termo de Responsabilidade (substitui a assinatura em papel)
+model TermAcceptance {
+  id         Int      @id @default(autoincrement())
+  studentId  Int
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  version    String // TERM_VERSION em src/domain/term.ts
+  signerRole String // aluno | responsavel
+  signerName String
+  signerCpf  String   @db.Char(11)
+  ip         String?  @db.VarChar(64)
+  userAgent  String?  @db.VarChar(500)
+  acceptedAt DateTime @default(now())
+
+  @@index([studentId, acceptedAt])
 }
 
 model Graduation {

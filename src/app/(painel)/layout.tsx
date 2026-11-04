@@ -16,7 +16,7 @@ async function SessionGate({ children }: { children: React.ReactNode }) {
 export default function PainelLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-wrap">
-      <aside className="flex max-w-full flex-[1_1_240px] flex-col gap-6 border-r-4 border-gold bg-ink px-4 py-6 text-white max-[820px]:flex-[1_1_100%] max-[820px]:gap-3 max-[820px]:border-r-0 max-[820px]:border-b-4 max-[820px]:p-4">
+      <aside className="flex max-w-full print:hidden flex-[1_1_240px] flex-col gap-6 border-r-4 border-gold bg-ink px-4 py-6 text-white max-[820px]:flex-[1_1_100%] max-[820px]:gap-3 max-[820px]:border-r-0 max-[820px]:border-b-4 max-[820px]:p-4">
         <div className="flex items-center gap-3 px-2">
           <Logo size={52} priority />
           <div>
@@ -34,7 +34,7 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
           </button>
         </form>
       </aside>
-      <main className="flex min-w-0 flex-[999_1_560px] flex-col gap-6 p-8 max-[820px]:px-4 max-[820px]:py-5">
+      <main className="flex min-w-0 flex-[999_1_560px] flex-col gap-6 p-8 max-[820px]:px-4 max-[820px]:py-5 print:p-0">
         <Suspense fallback={<PageSkeleton />}>
           <SessionGate>{children}</SessionGate>
         </Suspense>

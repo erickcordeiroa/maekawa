@@ -11,6 +11,8 @@ const listInclude = {
 const detailInclude = {
   ...listInclude,
   graduations: { orderBy: [{ date: "desc" }, { id: "desc" }] },
+  terms: { orderBy: { acceptedAt: "desc" }, take: 1 },
+  approvedBy: { select: { name: true } },
 } satisfies Prisma.StudentInclude
 
 export type StudentWithRelations = Prisma.StudentGetPayload<{ include: typeof listInclude }>
@@ -27,6 +29,14 @@ export const studentRepository = {
 
   findByPhone(phone: string) {
     return db.student.findUnique({ where: { phone }, include: { classGroup: true } })
+  },
+
+  findByCpf(cpf: string) {
+    return db.student.findUnique({ where: { cpf }, select: { id: true } })
+  },
+
+  approve(id: number, userId: number) {
+    return db.student.update({ where: { id }, data: { status: "ativo", approvedAt: new Date(), approvedById: userId } })
   },
 
   countCreatedSince(date: Date) {
