@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useEffect, useState, useTransition } from "react"
 import { Controller, useForm, useWatch, type Control, type FieldPath } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { toast } from "sonner"
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Field, FieldError, FieldLabel } from "@/components/ui/field"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Chip, ChipGroup } from "@/components/brand/chip"
 import { TermDocument } from "@/components/brand/term-document"
 import { IconCheck } from "@/components/brand/icons"
 import { BELTS, BELT_IDS, stripesText } from "@/domain/belts"
@@ -24,7 +25,7 @@ import { enrollAction } from "@/server/actions/student.actions"
 type Plan = { name: string; description: string; priceCents: number }
 
 const EMPTY: EnrollmentFormValues = {
-  fullName: "", birthDate: "", phone: "", cpf: "", address: "", guardianName: "", guardianPhone: "", guardianCpf: "",
+  fullName: "", birthDate: "", phone: "", cpf: "", address: "", isMinor: false, guardianName: "", guardianPhone: "", guardianCpf: "",
   belt: "branca", stripes: "0", plan: "Mensal", dueDay: "5", accepted: false as unknown as true,
 }
 
@@ -72,9 +73,16 @@ function TextField({
 export function EnrollmentForm({ plans }: { plans: Plan[] }) {
   const [sent, setSent] = useState(false)
   const [pending, startTransition] = useTransition()
-  const form = useForm<EnrollmentFormValues, unknown, EnrollmentInput>({ resolver: zodResolver(enrollmentSchema), defaultValues: EMPTY })
+  const defaults = { ...EMPTY, plan: (plans[0]?.name ?? EMPTY.plan) as EnrollmentFormValues["plan"] }
+  const form = useForm<EnrollmentFormValues, unknown, EnrollmentInput>({ resolver: zodResolver(enrollmentSchema), defaultValues: defaults })
   const v = useWatch({ control: form.control })
-  const isMinor = isMinorOn(v.birthDate ?? "")
+  const isMinor = v.isMinor === true
+
+  // Ao informar a data de nascimento, já marca a resposta certa (a pessoa ainda pode trocar)
+  const birth = v.birthDate ?? ""
+  useEffect(() => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(birth)) form.setValue("isMinor", isMinorOn(birth), { shouldValidate: form.formState.isSubmitted })
+  }, [birth, form])
 
   const onSubmit = form.handleSubmit(() =>
     startTransition(async () => {
@@ -94,7 +102,7 @@ export function EnrollmentForm({ plans }: { plans: Plan[] }) {
         <div className="flex size-[76px] items-center justify-center rounded-full bg-gold text-ink"><IconCheck /></div>
         <h2 className="text-[30px]">Matrícula enviada!</h2>
         <p className="max-w-[460px] leading-normal text-ink-muted">Recebemos seus dados. A equipe da academia vai confirmar sua matrícula pelo WhatsApp. Oss!</p>
-        <Button variant="outline" onClick={() => { form.reset(EMPTY); setSent(false) }}>Fazer outro cadastro</Button>
+        <Button variant="outline" onClick={() => { form.reset(defaults); setSent(false) }}>Fazer outro cadastro</Button>
       </Card>
     )
   }
@@ -110,6 +118,20 @@ export function EnrollmentForm({ plans }: { plans: Plan[] }) {
           <TextField control={c} name="phone" label="Telefone *" type="tel" inputMode="numeric" placeholder="(13) 90000-0000" mask={maskPhone} />
           <TextField control={c} name="address" label="Endereço *" placeholder="Rua, número, bairro, cidade" autoComplete="street-address" className="col-span-full" />
         </div>
+        <Controller
+          name="isMinor"
+          control={c}
+          render={({ field, fieldState }) => (
+            <Field data-invalid={fieldState.invalid} className="gap-2.5">
+              <span className="text-sm font-semibold">O aluno é menor de 18 anos?</span>
+              <ChipGroup aria-label="Aluno menor de idade">
+                <Chip pressed={!field.value} onClick={() => field.onChange(false)}>Não, é adulto</Chip>
+                <Chip pressed={field.value} onClick={() => field.onChange(true)}>Sim, é menor</Chip>
+              </ChipGroup>
+              <FieldError errors={[fieldState.error]} />
+            </Field>
+          )}
+        />
         {isMinor && (
           <div className="flex flex-col gap-3 rounded-lg bg-gold-soft p-[18px]">
             <p className="m-0 text-sm font-semibold">Aluno menor de 18 anos: o responsável legal preenche os dados abaixo e aceita o termo.</p>
@@ -181,6 +203,7 @@ export function EnrollmentForm({ plans }: { plans: Plan[] }) {
                   )
                 })}
               </div>
+              {plans.length === 0 && <p className="m-0 text-sm font-semibold">Nenhum plano disponível no momento. Fale com a recepção para concluir a matrícula.</p>}
               <FieldError errors={[fieldState.error]} />
             </div>
           )}
@@ -237,7 +260,7 @@ export function EnrollmentForm({ plans }: { plans: Plan[] }) {
         <p className="m-0 text-[13px] text-ink-quiet">O aceite fica registrado com data, hora e versão do termo ({TERM_VERSION}).</p>
       </Step>
 
-      <Button type="submit" variant="dark" size="lg" disabled={pending} className="min-h-14 text-xl">
+      <Button type="submit" variant="dark" size="lg" disabled={pending || plans.length === 0} className="min-h-14 text-xl">
         {pending ? "Enviando…" : "Enviar matrícula"}
       </Button>
     </form>
