@@ -27,6 +27,10 @@ export const ddmm = (d: Date) => `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() +
 /** 03/11/2026 */
 export const ddmmyyyy = (d: Date) => `${ddmm(d)}/${d.getUTCFullYear()}`
 
+/** Data local "04/11/2026" de um instante real (não de uma data de calendário) */
+export const instantDate = (d: Date) =>
+  new Intl.DateTimeFormat("pt-BR", { timeZone: TZ, day: "2-digit", month: "2-digit", year: "numeric" }).format(d)
+
 /** Hora local "19:00" de um instante real */
 export const hhmm = (d: Date) =>
   new Intl.DateTimeFormat("pt-BR", { timeZone: TZ, hour: "2-digit", minute: "2-digit" }).format(d)

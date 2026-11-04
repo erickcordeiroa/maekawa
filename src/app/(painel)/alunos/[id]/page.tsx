@@ -9,7 +9,10 @@ import { IconBack } from "@/components/brand/icons"
 import { PaymentBadge } from "@/components/brand/payment-badge"
 import { beltName, stripesText } from "@/domain/belts"
 import { todayISO } from "@/lib/dates"
-import { EditButton, GraduationPanel } from "./graduation-panel"
+import { Badge } from "@/components/ui/badge"
+import { buttonVariants } from "@/components/ui/button"
+import { SIGNER_LABEL } from "@/domain/term"
+import { ConfirmEnrollmentButton, EditButton, GraduationPanel } from "./graduation-panel"
 
 export const metadata: Metadata = { title: "Aluno" }
 
@@ -22,7 +25,8 @@ export default async function AlunoPage({ params }: PageProps<"/alunos/[id]">) {
     ["Nome completo", s.fullName],
     ["Data de nascimento", `${s.birth} (${s.age} anos)`],
     ["Telefone", s.phone],
-    ["Responsável", s.guardian ? <>{s.guardian.name}<br /><span className="font-medium">{s.guardian.phone}</span></> : "Não se aplica (adulto)"],
+    ["CPF", s.cpf ?? "Não informado"],
+    ["Responsável", s.guardian ? <>{s.guardian.name}<br /><span className="font-medium">{s.guardian.phone}</span>{s.guardian.cpf && <><br /><span className="font-medium">CPF {s.guardian.cpf}</span></>}</> : "Não se aplica (adulto)"],
     ["Endereço", s.address, true],
   ]
 
@@ -63,6 +67,43 @@ export default async function AlunoPage({ params }: PageProps<"/alunos/[id]">) {
                 </div>
               ))}
             </dl>
+          </Card>
+          <Card className="flex flex-col gap-3.5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle>Matrícula e termo</CardTitle>
+              {s.term && <Link href={`/alunos/${s.id}/termo`} className={buttonVariants({ variant: "outline" })}>Ver termo</Link>}
+            </div>
+            {s.pending ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-gold-soft p-[18px]">
+                <span className="font-semibold">Matrícula aguardando confirmação da academia.</span>
+                <ConfirmEnrollmentButton studentId={s.id} />
+              </div>
+            ) : (
+              <p className="m-0 text-sm text-ink-muted">
+                {s.approval ? <>Confirmada em {s.approval.at} por {s.approval.by}.</> : "Aluno cadastrado antes da confirmação pelo sistema."}
+              </p>
+            )}
+            {s.term ? (
+              <dl className="m-0 grid grid-cols-2 gap-x-5 gap-y-3.5">
+                <div>
+                  <dt className="text-[13px] text-ink-quiet">Aceito por</dt>
+                  <dd className="m-0 mt-0.5 font-semibold">{s.term.signerName}<br /><span className="font-medium">{SIGNER_LABEL[s.term.signerRole]} · CPF {s.term.signerCpf}</span></dd>
+                </div>
+                <div>
+                  <dt className="text-[13px] text-ink-quiet">Data do aceite</dt>
+                  <dd className="m-0 mt-0.5 font-semibold">{s.term.acceptedAt}</dd>
+                </div>
+                <div className="col-span-2">
+                  <dt className="text-[13px] text-ink-quiet">Versão do termo</dt>
+                  <dd className="m-0 mt-0.5 flex flex-wrap items-center gap-2 font-semibold">
+                    {s.term.version}
+                    {!s.term.current && <Badge variant="pending">Versão antiga · pedir novo aceite</Badge>}
+                  </dd>
+                </div>
+              </dl>
+            ) : (
+              <p className="m-0 text-sm font-semibold">Sem termo aceito no sistema.</p>
+            )}
           </Card>
           <section className="grid grid-cols-2 gap-4">
             <Card className="flex flex-col gap-1.5">
