@@ -20,9 +20,12 @@ model User {
 
 model Plan {
   id          Int       @id @default(autoincrement())
-  name        String    @unique // Mensal | Trimestral | Kids
+  name        String    @unique
   description String
-  priceCents  Int
+  priceCents  Int // valor mensal
+  isKids      Boolean   @default(false) // matrícula entra na turma Kids
+  active      Boolean   @default(true) // inativo: some do cadastro público, alunos atuais continuam
+  position    Int       @default(0)
   students    Student[]
 }
 
@@ -50,7 +53,7 @@ model Student {
   belt          String // branca | cinza | ... | preta
   stripes       Int              @default(0)
   isKids        Boolean          @default(false)
-  status        String           @default("ativo") // ativo | pendente
+  status        String           @default("ativo") // ativo | pendente | inativo (desativado, nunca excluído)
   dueDay        Int              @default(5)
   memberSince   DateTime         @default(now())
   approvedAt    DateTime? // matrícula confirmada pela academia

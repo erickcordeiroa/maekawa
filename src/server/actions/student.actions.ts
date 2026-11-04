@@ -5,7 +5,8 @@ import { headers } from "next/headers"
 import { z } from "zod"
 import { graduationSchema, type GraduationInput } from "@/lib/validations/graduation"
 import { enrollmentSchema, type EnrollmentFormValues } from "@/lib/validations/enrollment"
-import { addStripe, confirmEnrollment, promote, registerEnrollment } from "@/server/services/student.service"
+import { studentEditSchema, type StudentEditFormValues } from "@/lib/validations/student"
+import { addStripe, confirmEnrollment, promote, registerEnrollment, updateStudent } from "@/server/services/student.service"
 import { requireSession } from "@/server/auth/session"
 import { beltName } from "@/domain/belts"
 import { runAction, type ActionResult } from "./result"
@@ -49,6 +50,16 @@ export async function confirmEnrollmentAction(input: { studentId: number }): Pro
   return runAction(studentIdSchema, input, async ({ studentId }) => {
     const message = await confirmEnrollment(studentId, session.uid)
     revalidatePath(`/alunos/${studentId}`)
+    revalidatePath("/alunos")
+    return { ok: true, message }
+  })
+}
+
+export async function updateStudentAction(input: StudentEditFormValues): Promise<ActionResult> {
+  const session = await requireSession()
+  return runAction(studentEditSchema, input, async (data) => {
+    const message = await updateStudent(data, session.uid)
+    revalidatePath(`/alunos/${data.id}`)
     revalidatePath("/alunos")
     return { ok: true, message }
   })

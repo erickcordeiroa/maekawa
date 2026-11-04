@@ -35,6 +35,10 @@ export const studentRepository = {
     return db.student.findUnique({ where: { cpf }, select: { id: true } })
   },
 
+  update(id: number, data: Prisma.StudentUncheckedUpdateInput) {
+    return db.student.update({ where: { id }, data })
+  },
+
   approve(id: number, userId: number) {
     return db.student.update({ where: { id }, data: { status: "ativo", approvedAt: new Date(), approvedById: userId } })
   },

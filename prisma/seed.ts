@@ -78,7 +78,7 @@ async function main() {
   const plans = Object.fromEntries(
     await Promise.all(
       [["Mensal", "Adulto · treinos livres", 150], ["Trimestral", "Adulto · 3 meses", 135], ["Kids", "4 a 15 anos", 120]].map(async ([name, description, price]) => {
-        const p = await db.plan.create({ data: { name: name as string, description: description as string, priceCents: cents(price as number) } })
+        const p = await db.plan.create({ data: { name: name as string, description: description as string, priceCents: cents(price as number), isKids: name === "Kids" } })
         return [p.name, p] as const
       })
     )
