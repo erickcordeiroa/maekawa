@@ -19,6 +19,9 @@ export const IconCalendarCheck = ({ size = 20, ...p }: P) => (
 export const IconChart = ({ size = 20, ...p }: P) => (
   <svg {...base(size)} {...p}><path d="M3 3v18h18" /><path d="M7 15l4-4 3 3 5-6" /></svg>
 )
+export const IconTag = ({ size = 20, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z" /><path d="M7.5 7.5h.01" /></svg>
+)
 export const IconLink = ({ size = 20, ...p }: P) => (
   <svg {...base(size)} {...p}><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1" /><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" /></svg>
 )

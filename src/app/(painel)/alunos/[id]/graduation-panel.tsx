@@ -47,10 +47,6 @@ export function GraduationPanel({ studentId, canAddStripe, nextBelt, defaultDate
   )
 }
 
-export function EditButton() {
-  return <Button variant="outline" onClick={() => toast("Edição de dados (em breve no sistema)")}>Editar</Button>
-}
-
 export function ConfirmEnrollmentButton({ studentId }: { studentId: number }) {
   const [pending, startTransition] = useTransition()
   return (

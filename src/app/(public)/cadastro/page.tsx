@@ -22,7 +22,7 @@ async function PanelLink() {
 
 async function Form() {
   const plans = await listPlans()
-  return <EnrollmentForm plans={plans.map((p) => ({ name: p.name, description: p.description, priceCents: p.priceCents }))} />
+  return <EnrollmentForm plans={plans.map((p) => ({ id: p.id, name: p.name, description: p.description, priceCents: p.priceCents }))} />
 }
 
 export default function CadastroPage() {

@@ -2,13 +2,14 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { IconCalendarCheck, IconCard, IconChart, IconLink, IconQr, IconStudents } from "@/components/brand/icons"
+import { IconCalendarCheck, IconCard, IconChart, IconLink, IconQr, IconStudents, IconTag } from "@/components/brand/icons"
 
 const NAV = [
   { href: "/alunos", label: "Alunos", Icon: IconStudents },
   { href: "/mensalidades", label: "Mensalidades", Icon: IconCard },
   { href: "/frequencia", label: "Frequência", Icon: IconCalendarCheck },
   { href: "/financeiro", label: "Financeiro", Icon: IconChart },
+  { href: "/planos", label: "Planos", Icon: IconTag },
   { href: "/cadastro", label: "Link de cadastro", Icon: IconLink },
   { href: "/checkin", label: "Check-in (aluno)", Icon: IconQr },
 ]

@@ -12,7 +12,7 @@ import { todayISO } from "@/lib/dates"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import { SIGNER_LABEL } from "@/domain/term"
-import { ConfirmEnrollmentButton, EditButton, GraduationPanel } from "./graduation-panel"
+import { ConfirmEnrollmentButton, GraduationPanel } from "./graduation-panel"
 
 export const metadata: Metadata = { title: "Aluno" }
 
@@ -41,7 +41,10 @@ export default async function AlunoPage({ params }: PageProps<"/alunos/[id]">) {
         <div className="flex min-w-0 items-center gap-5">
           <Avatar name={s.shortName} className="size-20 bg-gold font-display text-[30px] text-ink" />
           <div className="flex min-w-0 flex-col gap-1.5">
-            <h1 className="text-[34px] leading-[1.1]">{s.shortName}</h1>
+            <h1 className="flex flex-wrap items-center gap-3 text-[34px] leading-[1.1]">
+              {s.shortName}
+              {s.inactive && <Badge className="font-sans text-sm normal-case">Desativado</Badge>}
+            </h1>
             <span className="text-[15px] text-on-dark">Aluno desde {s.since} · Plano {s.plan.toLowerCase()} · {s.turma}</span>
           </div>
         </div>
@@ -57,7 +60,7 @@ export default async function AlunoPage({ params }: PageProps<"/alunos/[id]">) {
           <Card className="flex flex-col gap-3.5">
             <div className="flex items-center justify-between">
               <CardTitle>Dados do aluno</CardTitle>
-              <EditButton />
+              <Link href={`/alunos/${s.id}/editar`} className={buttonVariants({ variant: "outline" })}>Editar</Link>
             </div>
             <dl className="m-0 grid grid-cols-2 gap-x-5 gap-y-3.5">
               {data.map(([dt, dd, wide]) => (

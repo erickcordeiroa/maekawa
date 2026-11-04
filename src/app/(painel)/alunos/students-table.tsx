@@ -17,20 +17,24 @@ import type { StudentRow } from "@/server/services/student.service"
 
 const FILTERS = [["todas", "Todas"], ["branca", "Branca"], ["azul", "Azul"], ["roxa", "Roxa"], ["marrom", "Marrom"], ["preta", "Preta"], ["kids", "Kids"]] as const
 type Filter = (typeof FILTERS)[number][0]
+const SITUATIONS = [["ativos", "Ativos"], ["inativos", "Desativados"]] as const
+type Situation = (typeof SITUATIONS)[number][0]
 
 export function StudentsTable({ rows }: { rows: StudentRow[] }) {
   const [filter, setFilter] = useState<Filter>("todas")
   const [search, setSearch] = useState("")
+  const [situation, setSituation] = useState<Situation>("ativos")
 
   const list = useMemo(() => {
     const q = search.trim().toLowerCase()
     const qd = onlyDigits(q)
     return rows.filter(
       (s) =>
+        s.inactive === (situation === "inativos") &&
         (filter === "todas" || (filter === "kids" ? s.isKids : s.belt === filter)) &&
         (!q || s.shortName.toLowerCase().includes(q) || (qd.length > 0 && onlyDigits(s.phone).includes(qd)))
     )
-  }, [rows, filter, search])
+  }, [rows, filter, search, situation])
 
   return (
     <Card className="flex flex-col gap-4">
@@ -40,6 +44,11 @@ export function StudentsTable({ rows }: { rows: StudentRow[] }) {
           <span className="sr-only">Buscar aluno</span>
           <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nome ou telefone" className="h-10 w-full border-0 bg-transparent text-base outline-none placeholder:text-ink-quiet" />
         </label>
+        <ChipGroup aria-label="Situação do aluno">
+          {SITUATIONS.map(([id, label]) => (
+            <Chip key={id} pressed={situation === id} onClick={() => setSituation(id)}>{label}</Chip>
+          ))}
+        </ChipGroup>
         <ChipGroup aria-label="Filtrar por faixa">
           {FILTERS.map(([id, label]) => (
             <Chip key={id} pressed={filter === id} onClick={() => setFilter(id)}>{label}</Chip>
@@ -75,7 +84,7 @@ export function StudentsTable({ rows }: { rows: StudentRow[] }) {
                 </div>
               </TableCell>
               <TableCell>
-                {s.pending ? <Badge variant="pending">Matrícula a confirmar</Badge> : s.payment ? <PaymentBadge {...s.payment} /> : <span className="text-ink-quiet">—</span>}
+                {s.inactive ? <Badge>Desativado</Badge> : s.pending ? <Badge variant="pending">Matrícula a confirmar</Badge> : s.payment ? <PaymentBadge {...s.payment} /> : <span className="text-ink-quiet">—</span>}
               </TableCell>
               <TableCell className="text-[#333]">{s.lastPresence}</TableCell>
               <TableCell className="text-right">
@@ -85,7 +94,7 @@ export function StudentsTable({ rows }: { rows: StudentRow[] }) {
           ))}
           {list.length === 0 && (
             <TableRow>
-              <TableCell colSpan={5} className="p-7 text-center text-ink-muted">Nenhum aluno encontrado.</TableCell>
+              <TableCell colSpan={5} className="p-7 text-center text-ink-muted">{situation === "inativos" ? "Nenhum aluno desativado." : "Nenhum aluno encontrado."}</TableCell>
             </TableRow>
           )}
         </TableBody>

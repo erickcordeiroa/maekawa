@@ -22,11 +22,11 @@ import { ddmmyyyy, dateOnly } from "@/lib/dates"
 import { DUE_DAYS, enrollmentSchema, isMinorOn, STRIPE_OPTIONS, type EnrollmentFormValues, type EnrollmentInput } from "@/lib/validations/enrollment"
 import { enrollAction } from "@/server/actions/student.actions"
 
-type Plan = { name: string; description: string; priceCents: number }
+type Plan = { id: number; name: string; description: string; priceCents: number }
 
 const EMPTY: EnrollmentFormValues = {
   fullName: "", birthDate: "", phone: "", cpf: "", address: "", isMinor: false, guardianName: "", guardianPhone: "", guardianCpf: "",
-  belt: "branca", stripes: "0", plan: "Mensal", dueDay: "5", accepted: false as unknown as true,
+  belt: "branca", stripes: "0", planId: "", dueDay: "5", accepted: false as unknown as true,
 }
 
 function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
@@ -73,7 +73,7 @@ function TextField({
 export function EnrollmentForm({ plans }: { plans: Plan[] }) {
   const [sent, setSent] = useState(false)
   const [pending, startTransition] = useTransition()
-  const defaults = { ...EMPTY, plan: (plans[0]?.name ?? EMPTY.plan) as EnrollmentFormValues["plan"] }
+  const defaults = { ...EMPTY, planId: plans[0] ? String(plans[0].id) : "" }
   const form = useForm<EnrollmentFormValues, unknown, EnrollmentInput>({ resolver: zodResolver(enrollmentSchema), defaultValues: defaults })
   const v = useWatch({ control: form.control })
   const isMinor = v.isMinor === true
@@ -181,19 +181,19 @@ export function EnrollmentForm({ plans }: { plans: Plan[] }) {
 
       <Step n={3} title="Plano">
         <Controller
-          name="plan"
+          name="planId"
           control={c}
           render={({ field, fieldState }) => (
             <div className="flex flex-col gap-2">
               <div role="group" aria-label="Plano" className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3.5">
                 {plans.map((p) => {
-                  const on = field.value === p.name
+                  const on = field.value === String(p.id)
                   return (
                     <button
-                      key={p.name}
+                      key={p.id}
                       type="button"
                       aria-pressed={on}
-                      onClick={() => field.onChange(p.name)}
+                      onClick={() => field.onChange(String(p.id))}
                       className={cn("flex flex-col items-start gap-1.5 rounded-lg p-[18px] text-left text-ink", on ? "border-[3px] border-ink bg-gold-soft" : "border-[1.5px] border-edge bg-white")}
                     >
                       <span className="display text-xl">{p.name}</span>
