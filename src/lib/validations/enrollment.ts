@@ -8,7 +8,7 @@ export const PLAN_NAMES = ["Mensal", "Trimestral", "Kids"] as const
 export const DUE_DAYS = ["5", "10", "15", "20"] as const
 export const STRIPE_OPTIONS = ["0", "1", "2", "3", "4"] as const
 
-/** Menor de idade é derivado da data de nascimento (nunca informado pelo usuário) */
+/** Idade < 18 pela data de nascimento (usada para conferir a resposta "é menor?") */
 export function isMinorOn(birthISO: string, todayIso = todayISO()) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(birthISO) || birthISO > todayIso) return false
   return ageOn(dateOnly(birthISO), dateOnly(todayIso)) < 18
@@ -23,6 +23,7 @@ export const enrollmentSchema = z
     phone: phoneField(),
     cpf: z.string().trim().optional(),
     address: z.string().trim().min(5, "Digite o endereço completo."),
+    isMinor: z.boolean(),
     guardianName: z.string().trim().optional(),
     guardianPhone: z.string().trim().optional(),
     guardianCpf: z.string().trim().optional(),
@@ -34,7 +35,14 @@ export const enrollmentSchema = z
   })
   // `when` faz a regra rodar mesmo com outros campos inválidos, para mostrar todos os erros de uma vez
   .superRefine((v, ctx) => {
-    const minor = isMinorOn(v.birthDate)
+    const minor = v.isMinor
+    // A resposta precisa bater com a data de nascimento
+    if (/^\d{4}-\d{2}-\d{2}$/.test(v.birthDate) && v.birthDate <= todayISO() && isMinorOn(v.birthDate) !== minor)
+      ctx.addIssue({
+        code: "custom",
+        path: ["isMinor"],
+        message: minor ? "Pela data de nascimento, o aluno já tem 18 anos ou mais." : "Pela data de nascimento, o aluno é menor de 18 anos.",
+      })
     const cpf = digits(v.cpf)
     // Adulto: CPF obrigatório. Menor: CPF do aluno é opcional, mas se vier precisa ser válido.
     if (!minor && !cpf) ctx.addIssue({ code: "custom", path: ["cpf"], message: "Digite o CPF." })
@@ -50,7 +58,7 @@ export const enrollmentSchema = z
       ctx.addIssue({ code: "custom", path: ["guardianPhone"], message: "Digite o contato do responsável com DDD." })
   }, { when: () => true })
   .transform((v) => {
-    const isMinor = isMinorOn(v.birthDate)
+    const isMinor = v.isMinor
     return {
       ...v,
       isMinor,
