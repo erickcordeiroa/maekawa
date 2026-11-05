@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useTransition } from "react"
+import { useEffect, useRef, useState, useTransition } from "react"
 import { Controller, useForm, useWatch, type Control, type FieldPath } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { toast } from "sonner"
@@ -27,6 +27,46 @@ type Plan = { id: number; name: string; description: string; priceCents: number 
 const EMPTY: EnrollmentFormValues = {
   fullName: "", birthDate: "", phone: "", cpf: "", address: "", isMinor: false, guardianName: "", guardianPhone: "", guardianCpf: "",
   belt: "branca", stripes: "0", planId: "", dueDay: "5", accepted: false as unknown as true,
+}
+
+// Rascunho no navegador: quem preenche no celular costuma deixar a aba aberta e voltar depois.
+// Se a página precisar ser recarregada (ex.: deploy novo), nada do que foi digitado se perde.
+// O aceite do termo nunca é restaurado: precisa ser marcado de novo a cada envio.
+const DRAFT_KEY = "mk:matricula:rascunho"
+const DRAFT_FIELDS = ["fullName", "birthDate", "phone", "cpf", "address", "guardianName", "guardianPhone", "guardianCpf", "belt", "stripes", "planId", "dueDay"] as const
+
+function readDraft(planIds: string[]): Partial<EnrollmentFormValues> | null {
+  try {
+    const raw = window.localStorage.getItem(DRAFT_KEY)
+    if (!raw) return null
+    const data = JSON.parse(raw) as Record<string, unknown>
+    const out: Record<string, unknown> = {}
+    for (const k of DRAFT_FIELDS) if (typeof data[k] === "string") out[k] = data[k]
+    if (typeof data.isMinor === "boolean") out.isMinor = data.isMinor
+    if (out.planId && !planIds.includes(out.planId as string)) delete out.planId // plano pode ter sido inativado
+    if (out.belt && !(BELT_IDS as readonly string[]).includes(out.belt as string)) delete out.belt
+    if (out.stripes && !(STRIPE_OPTIONS as readonly string[]).includes(out.stripes as string)) delete out.stripes
+    if (out.dueDay && !(DUE_DAYS as readonly string[]).includes(out.dueDay as string)) delete out.dueDay
+    return out as Partial<EnrollmentFormValues>
+  } catch {
+    return null
+  }
+}
+
+function writeDraft(v: Partial<EnrollmentFormValues>) {
+  try {
+    const out: Record<string, unknown> = { isMinor: v.isMinor }
+    for (const k of DRAFT_FIELDS) out[k] = v[k]
+    window.localStorage.setItem(DRAFT_KEY, JSON.stringify(out))
+  } catch {
+    // navegação privada ou armazenamento bloqueado: segue sem rascunho
+  }
+}
+
+function clearDraft() {
+  try {
+    window.localStorage.removeItem(DRAFT_KEY)
+  } catch {}
 }
 
 function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
@@ -78,6 +118,18 @@ export function EnrollmentForm({ plans }: { plans: Plan[] }) {
   const v = useWatch({ control: form.control })
   const isMinor = v.isMinor === true
 
+  // Restaura o rascunho uma vez, ao abrir a página
+  const restored = useRef(false)
+  useEffect(() => {
+    if (restored.current) return
+    restored.current = true
+    const draft = readDraft(plans.map((p) => String(p.id)))
+    if (draft) form.reset({ ...form.getValues(), ...draft, accepted: false as unknown as true })
+  }, [form, plans])
+  useEffect(() => {
+    if (restored.current && !sent) writeDraft(v)
+  }, [v, sent])
+
   // Ao informar a data de nascimento, já marca a resposta certa (a pessoa ainda pode trocar)
   const birth = v.birthDate ?? ""
   useEffect(() => {
@@ -86,11 +138,22 @@ export function EnrollmentForm({ plans }: { plans: Plan[] }) {
 
   const onSubmit = form.handleSubmit(() =>
     startTransition(async () => {
-      const r = await enrollAction(form.getValues())
+      let r: Awaited<ReturnType<typeof enrollAction>>
+      try {
+        r = await enrollAction(form.getValues())
+      } catch {
+        // Falha de rede ou página de uma versão anterior do sistema (deploy novo):
+        // o rascunho já está salvo, então recarregar não perde os dados.
+        return void toast.error("Não foi possível enviar. O sistema pode ter sido atualizado: recarregue a página e envie de novo. Seus dados continuam preenchidos.", {
+          duration: Infinity,
+          action: { label: "Recarregar", onClick: () => window.location.reload() },
+        })
+      }
       if (!r.ok) {
         Object.entries(r.fieldErrors ?? {}).forEach(([k, v]) => form.setError(k as FieldPath<EnrollmentFormValues>, { message: v[0] }))
         return void toast.error(r.error)
       }
+      clearDraft()
       setSent(true)
       window.scrollTo(0, 0)
     })
