@@ -5,7 +5,7 @@ import { studentRepository, type StudentDetailRecord } from "@/server/repositori
 import { attendanceRepository } from "@/server/repositories/attendance.repository"
 import { classGroupRepository, planRepository } from "@/server/repositories/catalog.repository"
 import { addDays, ageOn, dateOnly, ddmmyyyy, hhmm, instantDate, MONTHS, monthRef, relativeDay, toISO } from "@/lib/dates"
-import { onlyDigits, formatPhone } from "@/lib/format"
+import { formatPhone } from "@/lib/format"
 import { graduationLabel, maxStripes, nextBelt, type BeltId } from "@/domain/belts"
 import { currentPayment, paymentBadge, type PaymentBadge } from "./view-helpers"
 import { TERM_VERSION, type TermSignerRole } from "@/domain/term"
@@ -44,6 +44,7 @@ export type StudentRow = {
   stripes: number
   isKids: boolean
   phone: string
+  guardianPhone: string
   pending: boolean
   inactive: boolean
   payment: PaymentBadge | null
@@ -66,6 +67,7 @@ export async function listStudents() {
       stripes: s.stripes,
       isKids: s.isKids,
       phone: formatPhone(s.phone),
+      guardianPhone: formatPhone(s.guardianPhone),
       pending: s.status === "pendente",
       inactive: s.status === "inativo",
       payment: p ? paymentBadge(p, today) : null,
@@ -105,7 +107,7 @@ export async function getStudentDetail(id: number) {
     since: ddmmyyyy(s.memberSince),
     birth: ddmmyyyy(s.birthDate),
     age: ageOn(s.birthDate, today),
-    phone: formatPhone(s.phone),
+    phone: s.phone ? formatPhone(s.phone) : null,
     cpf: s.cpf ? maskCpf(s.cpf) : null,
     address: s.address,
     guardian: s.guardianName
@@ -119,6 +121,7 @@ export async function getStudentDetail(id: number) {
     payment: p ? paymentBadge(p, today) : null,
     paymentMonth: MONTHS[today.getUTCMonth()].toLowerCase(),
     canAddStripe: s.stripes < max,
+    canRemoveStripe: s.stripes > 0,
     nextBelt: next,
     history: s.graduations.map((g) => ({
       id: g.id,
@@ -153,6 +156,23 @@ export async function addStripe(id: number, dateISO: string) {
   return `${stripes}º grau registrado para ${s.shortName}`
 }
 
+/** Desfaz o grau atual (ex.: lançado por engano) e tira o registro correspondente do histórico */
+export async function removeStripe(id: number) {
+  const s = await studentRepository.findById(id)
+  if (!s) throw new DomainError("Aluno não encontrado.")
+  if (s.stripes <= 0) throw new DomainError("Este aluno não tem grau para remover.")
+  // O grau atual vem de um registro "grau" ou, se veio do cadastro, do registro "inicio"
+  const source = s.graduations
+    .filter((g) => g.belt === s.belt && g.stripes === s.stripes && (g.kind === "grau" || g.kind === "inicio"))
+    .sort((a, b) => b.id - a.id)[0]
+  if (!source) throw new DomainError("Não encontramos o registro deste grau no histórico.")
+  await studentRepository.removeStripe(id, s.stripes - 1, {
+    graduationId: source.id,
+    mode: source.kind === "grau" ? "delete" : "correct",
+  })
+  return `${s.stripes}º grau removido de ${s.shortName}`
+}
+
 export async function promote(id: number, dateISO: string) {
   const s = await studentRepository.findById(id)
   if (!s) throw new DomainError("Aluno não encontrado.")
@@ -166,9 +186,10 @@ export type RequestMeta = { ip: string | null; userAgent: string | null }
 
 /** Ficha pública de matrícula: entra como "pendente" até a equipe confirmar */
 export async function registerEnrollment(input: EnrollmentInput, meta: RequestMeta) {
-  const phone = onlyDigits(input.phone)
-  if (await studentRepository.findByPhone(phone)) throw new DomainError("Este telefone já está cadastrado. Fale com a recepção.")
+  // O telefone pode se repetir (família); a matrícula em dobro é barrada pelo CPF ou por nome + nascimento
   if (input.cpf && (await studentRepository.findByCpf(input.cpf))) throw new DomainError("Este CPF já está cadastrado. Fale com a recepção.")
+  if (await studentRepository.findByNameAndBirth(input.fullName.trim(), dateOnly(input.birthDate)))
+    throw new DomainError("Já existe uma matrícula com este nome e data de nascimento. Fale com a recepção.")
   const plan = await planRepository.findById(input.planId)
   if (!plan || !plan.active) throw new DomainError("Este plano não está mais disponível. Escolha outro plano.")
   const isKids = plan.isKids
@@ -183,7 +204,7 @@ export async function registerEnrollment(input: EnrollmentInput, meta: RequestMe
   await studentRepository.create({
     fullName: input.fullName.trim(),
     shortName: names.length > 1 ? `${names[0]} ${names[1]}` : names[0],
-    phone,
+    phone: input.phone,
     cpf: input.cpf,
     birthDate: dateOnly(input.birthDate),
     address: input.address.trim(),
@@ -253,9 +274,8 @@ export type StudentEditData = NonNullable<Awaited<ReturnType<typeof getStudentFo
 export async function updateStudent(input: StudentEditInput, userId: number) {
   const s = await studentRepository.findById(input.id)
   if (!s) throw new DomainError("Aluno não encontrado.")
-  const phone = onlyDigits(input.phone)
-  const byPhone = await studentRepository.findByPhone(phone)
-  if (byPhone && byPhone.id !== s.id) throw new DomainError(`Este telefone já é de outro aluno (${byPhone.shortName}).`)
+  const twin = await studentRepository.findByNameAndBirth(input.fullName.trim(), dateOnly(input.birthDate))
+  if (twin && twin.id !== s.id) throw new DomainError(`Já existe outro aluno com este nome e data de nascimento (${twin.shortName}).`)
   if (input.cpf) {
     const byCpf = await studentRepository.findByCpf(input.cpf)
     if (byCpf && byCpf.id !== s.id) throw new DomainError("Este CPF já é de outro aluno.")
@@ -270,7 +290,7 @@ export async function updateStudent(input: StudentEditInput, userId: number) {
     fullName: input.fullName.trim(),
     shortName: input.shortName.trim(),
     birthDate: dateOnly(input.birthDate),
-    phone,
+    phone: input.phone,
     cpf: input.cpf,
     address: input.address.trim(),
     guardianName: input.guardianName?.trim() ?? null,

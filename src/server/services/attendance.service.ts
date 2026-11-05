@@ -82,22 +82,28 @@ export async function saveRollCall(input: RollCallInput) {
   await attendanceRepository.saveRollCall(c.id, await requestToday(), input.marks)
 }
 
-/** Check-in, passo 1: identifica o aluno pelo telefone */
+/**
+ * Check-in, passo 1: acha os alunos do telefone. Uma família pode dividir o número
+ * (filhos com o telefone do pai), então volta uma lista para a pessoa escolher quem vai treinar.
+ */
 export async function findForCheckin(phone: string) {
-  const s = await studentRepository.findByPhone(onlyDigits(phone))
-  if (!s || s.status !== "ativo") throw new DomainError("Telefone não encontrado. Fale com o professor.")
-  const cls = s.classGroup ?? (await classGroupRepository.findBySlug("noite"))
-  return {
-    id: s.id,
-    shortName: s.shortName,
-    belt: s.belt as BeltId,
-    stripes: s.stripes,
-    className: cls?.name ?? "Aula livre",
-    classTime: cls?.startTime ?? "",
-  }
+  const students = await studentRepository.listActiveByPhone(onlyDigits(phone))
+  if (!students.length) throw new DomainError("Telefone não encontrado. Fale com o professor.")
+  const fallback = students.some((s) => !s.classGroup) ? await classGroupRepository.findBySlug("noite") : null
+  return students.map((s) => {
+    const cls = s.classGroup ?? fallback
+    return {
+      id: s.id,
+      shortName: s.shortName,
+      belt: s.belt as BeltId,
+      stripes: s.stripes,
+      className: cls?.name ?? "Aula livre",
+      classTime: cls?.startTime ?? "",
+    }
+  })
 }
 
-export type CheckinStudent = Awaited<ReturnType<typeof findForCheckin>>
+export type CheckinStudent = Awaited<ReturnType<typeof findForCheckin>>[number]
 
 /** Check-in, passo 2: registra a presença (idempotente no dia) */
 export async function confirmCheckin(studentId: number) {

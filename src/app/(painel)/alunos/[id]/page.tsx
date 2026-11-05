@@ -24,7 +24,7 @@ export default async function AlunoPage({ params }: PageProps<"/alunos/[id]">) {
   const data: [string, React.ReactNode, boolean?][] = [
     ["Nome completo", s.fullName],
     ["Data de nascimento", `${s.birth} (${s.age} anos)`],
-    ["Telefone", s.phone],
+    ["Telefone", s.phone ?? "Não informado"],
     ["CPF", s.cpf ?? "Não informado"],
     ["Responsável", s.guardian ? <>{s.guardian.name}<br /><span className="font-medium">{s.guardian.phone}</span>{s.guardian.cpf && <><br /><span className="font-medium">CPF {s.guardian.cpf}</span></>}</> : "Não se aplica (adulto)"],
     ["Endereço", s.address, true],
@@ -124,7 +124,7 @@ export default async function AlunoPage({ params }: PageProps<"/alunos/[id]">) {
 
         <Card className="flex min-w-0 flex-[1_1_420px] flex-col gap-5">
           <CardTitle>Graduação</CardTitle>
-          <GraduationPanel studentId={s.id} canAddStripe={s.canAddStripe} nextBelt={s.nextBelt ? beltName(s.nextBelt) : null} defaultDate={todayISO()} />
+          <GraduationPanel studentId={s.id} canAddStripe={s.canAddStripe} canRemoveStripe={s.canRemoveStripe} stripes={s.stripes} nextBelt={s.nextBelt ? beltName(s.nextBelt) : null} defaultDate={todayISO()} />
           <div>
             <h3 className="mb-2.5 text-[15px] tracking-[1px] text-ink-muted">Histórico de graduações</h3>
             <ol className="m-0 list-none p-0">

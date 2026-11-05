@@ -67,5 +67,8 @@ export async function chargeMessage(id: number) {
   const p = await paymentRepository.findById(id)
   if (!p) throw new DomainError("Mensalidade não encontrada.")
   const text = `Oss, ${p.student.shortName.split(" ")[0]}! Sua mensalidade venceu em ${ddmm(p.dueDate)}. Quando puder, regularize com a recepção. Obrigado!`
-  return { name: p.student.shortName, url: `https://wa.me/55${p.student.phone}?text=${encodeURIComponent(text)}` }
+  // Menor: quem paga é o responsável, então a cobrança vai para o contato dele
+  const phone = p.student.guardianPhone || p.student.phone
+  if (!phone) throw new DomainError(`${p.student.shortName} não tem telefone cadastrado.`)
+  return { name: p.student.shortName, url: `https://wa.me/55${phone}?text=${encodeURIComponent(text)}` }
 }

@@ -19,7 +19,7 @@ export async function saveRollCallAction(input: RollCallInput): Promise<ActionRe
 }
 
 /** Público (QR code na recepção) */
-export async function lookupCheckinAction(input: CheckinInput): Promise<ActionResult<CheckinStudent>> {
+export async function lookupCheckinAction(input: CheckinInput): Promise<ActionResult<CheckinStudent[]>> {
   return runAction(checkinSchema, input, async ({ phone }) => ({ ok: true, data: await findForCheckin(phone) }))
 }
 

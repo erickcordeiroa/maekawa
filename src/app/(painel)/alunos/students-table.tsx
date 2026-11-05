@@ -32,7 +32,7 @@ export function StudentsTable({ rows }: { rows: StudentRow[] }) {
       (s) =>
         s.inactive === (situation === "inativos") &&
         (filter === "todas" || (filter === "kids" ? s.isKids : s.belt === filter)) &&
-        (!q || s.shortName.toLowerCase().includes(q) || (qd.length > 0 && onlyDigits(s.phone).includes(qd)))
+        (!q || s.shortName.toLowerCase().includes(q) || (qd.length > 0 && (onlyDigits(s.phone).includes(qd) || onlyDigits(s.guardianPhone).includes(qd))))
     )
   }, [rows, filter, search, situation])
 
