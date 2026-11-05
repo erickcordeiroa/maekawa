@@ -70,15 +70,20 @@ export const studentRepository = {
   },
 
   /**
-   * Tira um grau: atualiza o aluno e corrige o histórico na mesma transação.
-   * "delete" apaga o registro do grau; "correct" ajusta os graus do registro de início.
+   * Correção de faixa/graus, na mesma transação:
+   * - `undo`: a faixa já existiu no histórico, então os registros lançados depois dela são apagados;
+   * - `record`: faixa nova (ex.: erro no cadastro), fica registrada como "correcao".
    */
-  removeStripe(id: number, stripes: number, history: { graduationId: number; mode: "delete" | "correct" }) {
+  correctBelt(
+    id: number,
+    data: { belt: string; stripes: number },
+    history: { undo: number[] } | { record: Date },
+  ) {
     return db.$transaction([
-      db.student.update({ where: { id }, data: { stripes } }),
-      history.mode === "delete"
-        ? db.graduation.delete({ where: { id: history.graduationId } })
-        : db.graduation.update({ where: { id: history.graduationId }, data: { stripes } }),
+      db.student.update({ where: { id }, data }),
+      "undo" in history
+        ? db.graduation.deleteMany({ where: { studentId: id, id: { in: history.undo } } })
+        : db.graduation.create({ data: { studentId: id, kind: "correcao", ...data, date: history.record } }),
     ])
   },
 }

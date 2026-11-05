@@ -6,7 +6,7 @@ import { attendanceRepository } from "@/server/repositories/attendance.repositor
 import { classGroupRepository, planRepository } from "@/server/repositories/catalog.repository"
 import { addDays, ageOn, dateOnly, ddmmyyyy, hhmm, instantDate, MONTHS, monthRef, relativeDay, toISO } from "@/lib/dates"
 import { formatPhone } from "@/lib/format"
-import { graduationLabel, maxStripes, nextBelt, type BeltId } from "@/domain/belts"
+import { beltName, graduationLabel, maxStripes, nextBelt, stripesText, type BeltId } from "@/domain/belts"
 import { currentPayment, paymentBadge, type PaymentBadge } from "./view-helpers"
 import { TERM_VERSION, type TermSignerRole } from "@/domain/term"
 import { maskCpf } from "@/domain/cpf"
@@ -121,7 +121,6 @@ export async function getStudentDetail(id: number) {
     payment: p ? paymentBadge(p, today) : null,
     paymentMonth: MONTHS[today.getUTCMonth()].toLowerCase(),
     canAddStripe: s.stripes < max,
-    canRemoveStripe: s.stripes > 0,
     nextBelt: next,
     history: s.graduations.map((g) => ({
       id: g.id,
@@ -156,21 +155,23 @@ export async function addStripe(id: number, dateISO: string) {
   return `${stripes}º grau registrado para ${s.shortName}`
 }
 
-/** Desfaz o grau atual (ex.: lançado por engano) e tira o registro correspondente do histórico */
-export async function removeStripe(id: number) {
+/**
+ * O administrador volta a faixa e os graus do aluno (grau ou promoção lançados por engano).
+ * Se essa faixa/graus já estiveram no histórico, o que veio depois sai do histórico;
+ * senão (ex.: faixa errada no cadastro), a correção fica registrada.
+ */
+export async function correctBelt(id: number, belt: BeltId, stripes: number) {
   const s = await studentRepository.findById(id)
   if (!s) throw new DomainError("Aluno não encontrado.")
-  if (s.stripes <= 0) throw new DomainError("Este aluno não tem grau para remover.")
-  // O grau atual vem de um registro "grau" ou, se veio do cadastro, do registro "inicio"
-  const source = s.graduations
-    .filter((g) => g.belt === s.belt && g.stripes === s.stripes && (g.kind === "grau" || g.kind === "inicio"))
-    .sort((a, b) => b.id - a.id)[0]
-  if (!source) throw new DomainError("Não encontramos o registro deste grau no histórico.")
-  await studentRepository.removeStripe(id, s.stripes - 1, {
-    graduationId: source.id,
-    mode: source.kind === "grau" ? "delete" : "correct",
-  })
-  return `${s.stripes}º grau removido de ${s.shortName}`
+  if (stripes > maxStripes(belt)) throw new DomainError("Essa faixa não tem tantos graus.")
+  if (s.belt === belt && s.stripes === stripes) throw new DomainError("O aluno já está nessa faixa e com esses graus.")
+
+  const match = s.graduations.filter((g) => g.belt === belt && g.stripes === stripes).sort((a, b) => b.id - a.id)[0]
+  const history = match
+    ? { undo: s.graduations.filter((g) => g.id > match.id).map((g) => g.id) }
+    : { record: await requestToday() }
+  await studentRepository.correctBelt(id, { belt, stripes }, history)
+  return `${s.shortName} agora está na faixa ${beltName(belt)} · ${stripesText(stripes)}`
 }
 
 export async function promote(id: number, dateISO: string) {
