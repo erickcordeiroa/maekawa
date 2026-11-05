@@ -6,7 +6,7 @@ import { z } from "zod"
 import { graduationSchema, type GraduationInput } from "@/lib/validations/graduation"
 import { enrollmentSchema, type EnrollmentFormValues } from "@/lib/validations/enrollment"
 import { studentEditSchema, type StudentEditFormValues } from "@/lib/validations/student"
-import { addStripe, confirmEnrollment, promote, registerEnrollment, updateStudent } from "@/server/services/student.service"
+import { addStripe, confirmEnrollment, promote, registerEnrollment, removeStripe, updateStudent } from "@/server/services/student.service"
 import { requireSession } from "@/server/auth/session"
 import { beltName } from "@/domain/belts"
 import { runAction, type ActionResult } from "./result"
@@ -44,6 +44,16 @@ export async function enrollAction(input: EnrollmentFormValues): Promise<ActionR
 }
 
 const studentIdSchema = z.object({ studentId: z.number().int().positive() })
+
+export async function removeStripeAction(input: { studentId: number }): Promise<ActionResult> {
+  await requireSession()
+  return runAction(studentIdSchema, input, async ({ studentId }) => {
+    const message = await removeStripe(studentId)
+    revalidatePath(`/alunos/${studentId}`)
+    revalidatePath("/alunos")
+    return { ok: true, message }
+  })
+}
 
 export async function confirmEnrollmentAction(input: { studentId: number }): Promise<ActionResult> {
   const session = await requireSession()

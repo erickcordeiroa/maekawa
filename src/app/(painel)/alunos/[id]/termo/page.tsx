@@ -19,7 +19,7 @@ export default async function TermoPage({ params }: PageProps<"/alunos/[id]/term
     ["Nome completo", s.fullName],
     ["Data de nascimento", s.birth],
     ["CPF", s.cpf ?? "Não informado"],
-    ["Telefone", s.phone],
+    ["Telefone", s.phone ?? "Não informado"],
     ["Endereço", s.address],
     ...(s.guardian ? ([["Responsável", s.guardian.name], ["CPF do responsável", s.guardian.cpf ?? "Não informado"]] as [string, string][]) : []),
   ]

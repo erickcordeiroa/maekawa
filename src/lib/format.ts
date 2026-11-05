@@ -24,6 +24,6 @@ export function maskPhone(v: string) {
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
 }
 
-export const formatPhone = (digits: string) => maskPhone(digits)
+export const formatPhone = (digits: string | null | undefined) => maskPhone(digits ?? "")
 
 export const firstName = (n: string) => n.split(" ")[0]

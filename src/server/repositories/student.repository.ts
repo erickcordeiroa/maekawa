@@ -27,8 +27,18 @@ export const studentRepository = {
     return db.student.findUnique({ where: { id }, include: detailInclude })
   },
 
-  findByPhone(phone: string) {
-    return db.student.findUnique({ where: { phone }, include: { classGroup: true } })
+  /** Todos os alunos ativos ligados ao número: como telefone próprio ou como contato do responsável */
+  listActiveByPhone(phone: string) {
+    return db.student.findMany({
+      where: { status: "ativo", OR: [{ phone }, { guardianPhone: phone }] },
+      include: { classGroup: true },
+      orderBy: { birthDate: "asc" },
+    })
+  },
+
+  /** Mesma pessoa matriculada duas vezes (vale para quem não tem CPF, como as crianças) */
+  findByNameAndBirth(fullName: string, birthDate: Date) {
+    return db.student.findFirst({ where: { fullName, birthDate }, select: { id: true, shortName: true } })
   },
 
   findByCpf(cpf: string) {
@@ -56,6 +66,19 @@ export const studentRepository = {
     return db.$transaction([
       db.student.update({ where: { id }, data: { belt: data.belt, stripes: data.stripes } }),
       db.graduation.create({ data: { studentId: id, ...data } }),
+    ])
+  },
+
+  /**
+   * Tira um grau: atualiza o aluno e corrige o histórico na mesma transação.
+   * "delete" apaga o registro do grau; "correct" ajusta os graus do registro de início.
+   */
+  removeStripe(id: number, stripes: number, history: { graduationId: number; mode: "delete" | "correct" }) {
+    return db.$transaction([
+      db.student.update({ where: { id }, data: { stripes } }),
+      history.mode === "delete"
+        ? db.graduation.delete({ where: { id: history.graduationId } })
+        : db.graduation.update({ where: { id: history.graduationId }, data: { stripes } }),
     ])
   },
 }

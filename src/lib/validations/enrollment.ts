@@ -2,7 +2,6 @@ import { z } from "zod"
 import { BELT_IDS } from "@/domain/belts"
 import { isValidCpf } from "@/domain/cpf"
 import { ageOn, dateOnly, todayISO } from "@/lib/dates"
-import { phoneField } from "./phone"
 
 export const DUE_DAYS = ["5", "10", "15", "20"] as const
 export const STRIPE_OPTIONS = ["0", "1", "2", "3", "4"] as const
@@ -19,7 +18,8 @@ const digits = (v?: string) => (v ?? "").replace(/\D/g, "")
 export const personShape = {
   fullName: z.string().trim().min(3, "Digite o nome completo.").refine((v) => v.split(/\s+/).length >= 2, "Digite nome e sobrenome."),
   birthDate: z.iso.date("Informe a data de nascimento.").refine((v) => v <= todayISO(), "A data de nascimento não pode ser no futuro."),
-  phone: phoneField(),
+  // Obrigatório para adulto; menor pode ficar sem (vale o contato do responsável). Ver checkPerson.
+  phone: z.string().trim(),
   cpf: z.string().trim().optional(),
   address: z.string().trim().min(5, "Digite o endereço completo."),
   isMinor: z.boolean(),
@@ -44,6 +44,9 @@ export function checkPerson(v: PersonValues, ctx: z.RefinementCtx, { requireAdul
       path: ["isMinor"],
       message: minor ? "Pela data de nascimento, o aluno já tem 18 anos ou mais." : "Pela data de nascimento, o aluno é menor de 18 anos.",
     })
+  const phone = digits(v.phone)
+  if (!phone && !minor) ctx.addIssue({ code: "custom", path: ["phone"], message: "Digite o telefone com DDD." })
+  else if (phone && phone.length < 10) ctx.addIssue({ code: "custom", path: ["phone"], message: "Digite o telefone com DDD." })
   const cpf = digits(v.cpf)
   if (!minor && !cpf && requireAdultCpf) ctx.addIssue({ code: "custom", path: ["cpf"], message: "Digite o CPF." })
   else if (cpf && !isValidCpf(cpf)) ctx.addIssue({ code: "custom", path: ["cpf"], message: "CPF inválido. Confira os números." })
@@ -63,6 +66,7 @@ export function normalizePerson<T extends PersonValues>(v: T) {
   const isMinor = v.isMinor
   return {
     ...v,
+    phone: digits(v.phone) || null,
     cpf: digits(v.cpf) || null,
     guardianName: isMinor ? v.guardianName ?? null : null,
     guardianPhone: isMinor ? digits(v.guardianPhone) : null,

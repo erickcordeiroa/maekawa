@@ -178,7 +178,7 @@ export function EnrollmentForm({ plans }: { plans: Plan[] }) {
           <TextField control={c} name="fullName" label="Nome completo *" autoComplete="name" className="col-span-full" />
           <TextField control={c} name="birthDate" label="Data de nascimento *" type="date" />
           <TextField control={c} name="cpf" label={isMinor ? "CPF do aluno (opcional)" : "CPF *"} inputMode="numeric" placeholder="000.000.000-00" mask={maskCpf} />
-          <TextField control={c} name="phone" label="Telefone *" type="tel" inputMode="numeric" placeholder="(13) 90000-0000" mask={maskPhone} />
+          <TextField control={c} name="phone" label={isMinor ? "Telefone do aluno (opcional)" : "Telefone *"} type="tel" inputMode="numeric" placeholder="(13) 90000-0000" mask={maskPhone} />
           <TextField control={c} name="address" label="Endereço *" placeholder="Rua, número, bairro, cidade" autoComplete="street-address" className="col-span-full" />
         </div>
         <Controller
@@ -297,7 +297,7 @@ export function EnrollmentForm({ plans }: { plans: Plan[] }) {
               ["Nome completo", v.fullName ?? ""],
               ["Data de nascimento", v.birthDate ? ddmmyyyy(dateOnly(v.birthDate)) : ""],
               ["CPF", v.cpf ?? ""],
-              ["Telefone", v.phone ?? ""],
+              ["Telefone", v.phone || (isMinor ? "Não informado" : "")],
               ["Endereço", v.address ?? ""],
               ...(isMinor ? ([["Responsável", v.guardianName ?? ""], ["CPF do responsável", v.guardianCpf ?? ""]] as [string, string][]) : []),
             ]}

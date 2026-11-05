@@ -93,7 +93,7 @@ export function StudentEditForm({ data }: { data: StudentEditData }) {
           <TextField control={c} name="shortName" label="Nome de exibição *" hint="Como aparece nas listas e na chamada." />
           <TextField control={c} name="birthDate" label="Data de nascimento *" type="date" />
           <TextField control={c} name="cpf" label="CPF" inputMode="numeric" placeholder="000.000.000-00" mask={maskCpf} />
-          <TextField control={c} name="phone" label="Telefone *" type="tel" inputMode="numeric" mask={maskPhone} />
+          <TextField control={c} name="phone" label={isMinor ? "Telefone do aluno (opcional)" : "Telefone *"} type="tel" inputMode="numeric" mask={maskPhone} />
           <TextField control={c} name="address" label="Endereço *" className="col-span-full" />
         </div>
         <Controller

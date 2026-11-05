@@ -16,7 +16,12 @@ import { confirmCheckinAction, lookupCheckinAction } from "@/server/actions/atte
 import type { CheckinStudent } from "@/server/services/attendance.service"
 
 type Done = { already: boolean; time: string; firstName: string; monthCount: number; monthName: string; belt: CheckinStudent["belt"]; stripes: number }
-type Step = { step: "phone" } | { step: "confirm"; student: CheckinStudent } | { step: "done"; result: Done }
+// `family`: alunos que dividem o telefone (ex.: pai e filhos). Com mais de um, a pessoa escolhe quem vai treinar.
+type Step =
+  | { step: "phone" }
+  | { step: "choose"; family: CheckinStudent[] }
+  | { step: "confirm"; student: CheckinStudent; family: CheckinStudent[] }
+  | { step: "done"; result: Done; family: CheckinStudent[] }
 
 const big = "min-h-[58px] rounded-xl text-[19px]"
 
@@ -26,9 +31,40 @@ export function CheckinFlow({ demoHint }: { demoHint: boolean }) {
   const form = useForm<CheckinInput>({ resolver: zodResolver(checkinSchema), defaultValues: { phone: "" } })
 
   const restart = () => { form.reset({ phone: "" }); setState({ step: "phone" }) }
+  const backToFamily = (family: CheckinStudent[]) => (family.length > 1 ? setState({ step: "choose", family }) : restart())
+
+  if (state.step === "choose") {
+    const { family } = state
+    return (
+      <div className="flex flex-col gap-[18px]">
+        <div>
+          <h1 className="text-[28px]">Quem vai treinar?</h1>
+          <p className="mt-1.5 text-[15px] leading-normal text-ink-muted">Este telefone é de mais de um aluno. Toque no nome de quem vai fazer o check-in.</p>
+        </div>
+        <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
+          {family.map((s) => (
+            <li key={s.id}>
+              <button
+                type="button"
+                onClick={() => setState({ step: "confirm", student: s, family })}
+                className="flex min-h-[72px] w-full items-center gap-3.5 rounded-xl border-2 border-edge bg-ground p-3.5 text-left hover:border-ink focus-visible:border-ink focus-visible:outline-3 focus-visible:outline-offset-1 focus-visible:outline-gold"
+              >
+                <Avatar name={s.shortName} className="size-12 text-base" />
+                <span className="flex flex-col gap-1">
+                  <b className="text-lg">{s.shortName}</b>
+                  <span className="inline-flex items-center gap-2 text-sm"><Belt belt={s.belt} stripes={s.stripes} />{beltName(s.belt)} · {s.className}</span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+        <Button variant="ghost" className="min-h-12 rounded-xl" onClick={restart}>Usar outro telefone</Button>
+      </div>
+    )
+  }
 
   if (state.step === "confirm") {
-    const s = state.student
+    const { student: s, family } = state
     return (
       <div className="flex flex-col gap-[18px]">
         <h1 className="text-[28px]">É você?</h1>
@@ -50,20 +86,20 @@ export function CheckinFlow({ demoHint }: { demoHint: boolean }) {
           onClick={() =>
             startTransition(async () => {
               const r = await confirmCheckinAction(s.id)
-              if (r.ok && r.data) setState({ step: "done", result: r.data })
+              if (r.ok && r.data) setState({ step: "done", result: r.data, family })
               else if (!r.ok) { form.setError("phone", { message: r.error }); setState({ step: "phone" }) }
             })
           }
         >
           {pending ? "Confirmando…" : "Sim, confirmar presença"}
         </Button>
-        <Button variant="ghost" className="min-h-12 rounded-xl" onClick={restart}>Não sou eu</Button>
+        <Button variant="ghost" className="min-h-12 rounded-xl" onClick={() => backToFamily(family)}>Não sou eu</Button>
       </div>
     )
   }
 
   if (state.step === "done") {
-    const r = state.result
+    const { result: r, family } = state
     return (
       <div className="flex flex-col items-center gap-4 text-center">
         <div className="flex size-[88px] items-center justify-center rounded-full bg-gold text-ink"><IconCheck /></div>
@@ -81,6 +117,7 @@ export function CheckinFlow({ demoHint }: { demoHint: boolean }) {
             <span className="text-[13px]">{stripesText(r.stripes)}</span>
           </div>
         </div>
+        {family.length > 1 && <Button className="w-full" onClick={() => backToFamily(family)}>Check-in de outra pessoa da família</Button>}
         <Button variant="ghost" onClick={restart}>Fazer outro check-in</Button>
       </div>
     )
@@ -93,7 +130,10 @@ export function CheckinFlow({ demoHint }: { demoHint: boolean }) {
       onSubmit={form.handleSubmit((v) =>
         startTransition(async () => {
           const r = await lookupCheckinAction(v)
-          if (r.ok && r.data) setState({ step: "confirm", student: r.data })
+          if (r.ok && r.data) {
+            const family = r.data
+            setState(family.length === 1 ? { step: "confirm", student: family[0], family } : { step: "choose", family })
+          }
           else if (!r.ok) form.setError("phone", { message: r.fieldErrors?.phone?.[0] ?? r.error })
         })
       )}

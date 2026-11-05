@@ -43,7 +43,7 @@ model Student {
   id            Int              @id @default(autoincrement())
   fullName      String
   shortName     String
-  phone         String           @unique // apenas dígitos
+  phone         String? // apenas dígitos; opcional para menor. Pode se repetir na família (filhos com o telefone do pai)
   cpf           String?          @unique @db.Char(11) // apenas dígitos; obrigatório para adultos
   birthDate     DateTime
   address       String           @db.VarChar(500)
@@ -70,6 +70,9 @@ model Student {
   createdAt     DateTime         @default(now())
 
   @@index([belt])
+  @@index([phone])
+  @@index([guardianPhone])
+  @@index([fullName, birthDate])
 }
 
 // Registro do aceite do Termo de Responsabilidade (substitui a assinatura em papel)
