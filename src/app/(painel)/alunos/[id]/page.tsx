@@ -124,7 +124,7 @@ export default async function AlunoPage({ params }: PageProps<"/alunos/[id]">) {
 
         <Card className="flex min-w-0 flex-[1_1_420px] flex-col gap-5">
           <CardTitle>Graduação</CardTitle>
-          <GraduationPanel studentId={s.id} canAddStripe={s.canAddStripe} canRemoveStripe={s.canRemoveStripe} stripes={s.stripes} nextBelt={s.nextBelt ? beltName(s.nextBelt) : null} defaultDate={todayISO()} />
+          <GraduationPanel studentId={s.id} canAddStripe={s.canAddStripe} belt={s.belt} stripes={s.stripes} nextBelt={s.nextBelt ? beltName(s.nextBelt) : null} defaultDate={todayISO()} />
           <div>
             <h3 className="mb-2.5 text-[15px] tracking-[1px] text-ink-muted">Histórico de graduações</h3>
             <ol className="m-0 list-none p-0">

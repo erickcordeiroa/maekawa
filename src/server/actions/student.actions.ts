@@ -3,10 +3,10 @@
 import { revalidatePath } from "next/cache"
 import { headers } from "next/headers"
 import { z } from "zod"
-import { graduationSchema, type GraduationInput } from "@/lib/validations/graduation"
+import { beltCorrectionSchema, graduationSchema, type BeltCorrectionFormValues, type GraduationInput } from "@/lib/validations/graduation"
 import { enrollmentSchema, type EnrollmentFormValues } from "@/lib/validations/enrollment"
 import { studentEditSchema, type StudentEditFormValues } from "@/lib/validations/student"
-import { addStripe, confirmEnrollment, promote, registerEnrollment, removeStripe, updateStudent } from "@/server/services/student.service"
+import { addStripe, confirmEnrollment, correctBelt, promote, registerEnrollment, updateStudent } from "@/server/services/student.service"
 import { requireSession } from "@/server/auth/session"
 import { beltName } from "@/domain/belts"
 import { runAction, type ActionResult } from "./result"
@@ -45,10 +45,10 @@ export async function enrollAction(input: EnrollmentFormValues): Promise<ActionR
 
 const studentIdSchema = z.object({ studentId: z.number().int().positive() })
 
-export async function removeStripeAction(input: { studentId: number }): Promise<ActionResult> {
+export async function correctBeltAction(input: BeltCorrectionFormValues): Promise<ActionResult> {
   await requireSession()
-  return runAction(studentIdSchema, input, async ({ studentId }) => {
-    const message = await removeStripe(studentId)
+  return runAction(beltCorrectionSchema, input, async ({ studentId, belt, stripes }) => {
+    const message = await correctBelt(studentId, belt, stripes)
     revalidatePath(`/alunos/${studentId}`)
     revalidatePath("/alunos")
     return { ok: true, message }

@@ -28,11 +28,12 @@ export function nextBelt(belt: string, isKids: boolean): BeltId | null {
   return i >= 0 && i < order.length - 1 ? order[i + 1] : null
 }
 
-export type GraduationKind = "inicio" | "grau" | "promocao"
+export type GraduationKind = "inicio" | "grau" | "promocao" | "correcao"
 
 export function graduationLabel(kind: string, belt: string, stripes: number) {
   const n = beltName(belt)
   if (kind === "inicio") return `Início na faixa ${n}`
   if (kind === "promocao") return `Promovido à faixa ${n}`
+  if (kind === "correcao") return `Corrigido para faixa ${n} · ${stripesText(stripes)}`
   return `Faixa ${n} · ${stripes}º grau`
 }
