@@ -11,6 +11,11 @@ export const paymentRepository = {
     })
   },
 
+  /** skipDuplicates: dois acessos simultâneos não geram erro nem cobrança em dobro */
+  createMany(data: { studentId: number; reference: string; amountCents: number; dueDate: Date }[]) {
+    return db.payment.createMany({ data, skipDuplicates: true })
+  },
+
   findById(id: number) {
     return db.payment.findUnique({ where: { id }, include: { student: true } })
   },
