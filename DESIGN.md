@@ -198,6 +198,10 @@ Cantos suaves e consistentes: 6px badge, 8px controle, 10px painel interno, 12px
 - **Style:** pílula 40px, branco com borda 1.5px cinza.
 - **State:** selecionado = preto com texto dourado (`aria-pressed`).
 
+### Pagination
+- **Style:** rodapé da tabela com "Mostrando 1–20 de 57 alunos" à esquerda e controles de 44px à direita; página atual = fundo preto com texto dourado (`aria-current`). Com uma página só, o rodapé some.
+- **Mobile:** abaixo de 480px os números viram "1 de 3", com as setas nas pontas.
+
 ### Cards / Containers
 - **Corner Style:** 12px, padding 22px, branco ou preto invertido; variante alerta com borda vermelha 2px.
 

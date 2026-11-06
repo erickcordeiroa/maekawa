@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Chip, ChipGroup } from "@/components/brand/chip"
+import { Pagination, usePagination } from "@/components/brand/pagination"
 import { PaymentBadge } from "@/components/brand/payment-badge"
 import { PAYMENT_TABS, type PaymentTab } from "@/domain/payments"
 import { brl } from "@/lib/format"
@@ -19,6 +20,7 @@ export function PaymentsTable({ rows, counts, initialTab }: Props) {
   const [tab, setTab] = useState<PaymentTab>(initialTab)
   const [pending, startTransition] = useTransition()
   const list = rows.filter((r) => tab === "todos" || r.status === tab)
+  const { pageItems, pagination, reset, topRef } = usePagination(list)
 
   const run = (fn: () => Promise<ActionResult<{ url: string } | undefined>>) =>
     startTransition(async () => {
@@ -29,10 +31,10 @@ export function PaymentsTable({ rows, counts, initialTab }: Props) {
     })
 
   return (
-    <Card className="flex flex-col gap-4">
+    <Card ref={topRef} className="flex scroll-mt-24 flex-col gap-4">
       <ChipGroup aria-label="Filtrar por situação">
         {PAYMENT_TABS.map(([id, label]) => (
-          <Chip key={id} pressed={tab === id} onClick={() => setTab(id)}>{label} ({counts[id]})</Chip>
+          <Chip key={id} pressed={tab === id} onClick={() => { setTab(id); reset() }}>{label} ({counts[id]})</Chip>
         ))}
       </ChipGroup>
       <Table minWidth={840}>
@@ -47,7 +49,7 @@ export function PaymentsTable({ rows, counts, initialTab }: Props) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {list.map((r) => (
+          {pageItems.map((r) => (
             <TableRow key={r.id}>
               <TableCell className="font-semibold">{r.studentName}</TableCell>
               <TableCell>{r.plan}</TableCell>
@@ -75,6 +77,7 @@ export function PaymentsTable({ rows, counts, initialTab }: Props) {
           )}
         </TableBody>
       </Table>
+      <Pagination {...pagination} noun="mensalidades" />
     </Card>
   )
 }

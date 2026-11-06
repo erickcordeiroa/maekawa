@@ -10,6 +10,7 @@ import { Avatar } from "@/components/brand/avatar"
 import { Belt } from "@/components/brand/belt"
 import { Chip, ChipGroup } from "@/components/brand/chip"
 import { IconSearch } from "@/components/brand/icons"
+import { Pagination, usePagination } from "@/components/brand/pagination"
 import { PaymentBadge } from "@/components/brand/payment-badge"
 import { beltName, stripesText } from "@/domain/belts"
 import { onlyDigits } from "@/lib/format"
@@ -35,23 +36,24 @@ export function StudentsTable({ rows }: { rows: StudentRow[] }) {
         (!q || s.shortName.toLowerCase().includes(q) || (qd.length > 0 && (onlyDigits(s.phone).includes(qd) || onlyDigits(s.guardianPhone).includes(qd))))
     )
   }, [rows, filter, search, situation])
+  const { pageItems, pagination, reset, topRef } = usePagination(list)
 
   return (
-    <Card className="flex flex-col gap-4">
+    <Card ref={topRef} className="flex scroll-mt-24 flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <label className="flex h-11 max-w-[380px] flex-[1_1_260px] items-center gap-2 rounded-md border-[1.5px] border-edge px-3 has-[input:focus-visible]:border-ink">
           <IconSearch className="text-ink-muted" />
           <span className="sr-only">Buscar aluno</span>
-          <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nome ou telefone" className="h-10 w-full border-0 bg-transparent text-base outline-none placeholder:text-ink-quiet" />
+          <input type="search" value={search} onChange={(e) => { setSearch(e.target.value); reset() }} placeholder="Buscar por nome ou telefone" className="h-10 w-full border-0 bg-transparent text-base outline-none placeholder:text-ink-quiet" />
         </label>
         <ChipGroup aria-label="Situação do aluno">
           {SITUATIONS.map(([id, label]) => (
-            <Chip key={id} pressed={situation === id} onClick={() => setSituation(id)}>{label}</Chip>
+            <Chip key={id} pressed={situation === id} onClick={() => { setSituation(id); reset() }}>{label}</Chip>
           ))}
         </ChipGroup>
         <ChipGroup aria-label="Filtrar por faixa">
           {FILTERS.map(([id, label]) => (
-            <Chip key={id} pressed={filter === id} onClick={() => setFilter(id)}>{label}</Chip>
+            <Chip key={id} pressed={filter === id} onClick={() => { setFilter(id); reset() }}>{label}</Chip>
           ))}
         </ChipGroup>
       </div>
@@ -66,7 +68,7 @@ export function StudentsTable({ rows }: { rows: StudentRow[] }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {list.map((s) => (
+          {pageItems.map((s) => (
             <TableRow key={s.id}>
               <TableCell>
                 <div className="flex items-center gap-3">
@@ -99,6 +101,7 @@ export function StudentsTable({ rows }: { rows: StudentRow[] }) {
           )}
         </TableBody>
       </Table>
+      <Pagination {...pagination} noun="alunos" />
     </Card>
   )
 }

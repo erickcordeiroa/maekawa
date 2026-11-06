@@ -11,7 +11,7 @@ export async function financeOverview(period: Period) {
   const today = await requestToday()
   const thisMonth = dateOnly(`${monthRef(today)}-01`)
   const from = addMonths(thisMonth, -(period - 1))
-  const [txs, recent] = await Promise.all([transactionRepository.inRange(from, addMonths(thisMonth, 1)), transactionRepository.recent(8)])
+  const txs = await transactionRepository.inRange(from, addMonths(thisMonth, 1))
 
   const months = Array.from({ length: period }, (_, i) => {
     const m = addMonths(from, i)
@@ -43,7 +43,7 @@ export async function financeOverview(period: Period) {
     totals: { income, expense, profit, margin: income ? Math.round((profit / income) * 100) : 0, avgProfit: Math.round(profit / period) },
     expenses: breakdown("saida"),
     sources: breakdown("entrada"),
-    recent: recent.map((t) => ({ id: t.id, date: ddmm(t.date), description: t.description, signed: t.kind === "entrada" ? t.amountCents : -t.amountCents })),
+    transactions: txs.map((t) => ({ id: t.id, date: ddmm(t.date), description: t.description, signed: t.kind === "entrada" ? t.amountCents : -t.amountCents })),
   }
 }
 
