@@ -6,12 +6,11 @@ import { PageHead } from "@/components/brand/page-head"
 import { Kpi, KpiGrid } from "@/components/brand/kpi"
 import { HBar } from "@/components/brand/hbar"
 import { Card, CardDescription, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { PERIODS } from "@/domain/finance"
 import { brl } from "@/lib/format"
 import { NewTransactionButton } from "./new-transaction"
 import { ProfitChart } from "./profit-chart"
+import { TransactionsTable } from "./transactions-table"
 
 export const metadata: Metadata = { title: "Financeiro" }
 
@@ -100,29 +99,7 @@ export default async function FinanceiroPage({ searchParams }: PageProps<"/finan
           </div>
           <Breakdown items={o.sources} color="var(--color-gold)" empty="Nenhuma entrada lançada neste mês." />
         </Card>
-        <Card className="flex min-w-0 flex-[3_1_440px] flex-col gap-4">
-          <CardTitle>Últimos lançamentos</CardTitle>
-          <Table minWidth={460}>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Data</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead className="text-right">Valor</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {o.recent.map((e) => (
-                <TableRow key={e.id}>
-                  <TableCell className="tabular text-[#333]">{e.date}</TableCell>
-                  <TableCell className="font-semibold">{e.description}</TableCell>
-                  <TableCell><Badge variant={e.signed > 0 ? "pending" : "neutral"}>{e.signed > 0 ? "Entrada" : "Saída"}</Badge></TableCell>
-                  <TableCell className={cn("tabular text-right font-bold", e.signed < 0 && "text-red-ink")}>{e.signed > 0 ? "+ " : ""}{brl(e.signed)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
+        <TransactionsTable key={period} rows={o.transactions} />
       </div>
     </>
   )
