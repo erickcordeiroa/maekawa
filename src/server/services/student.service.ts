@@ -8,6 +8,7 @@ import { addDays, ageOn, dateOnly, ddmmyyyy, hhmm, instantDate, MONTHS, monthRef
 import { formatPhone } from "@/lib/format"
 import { beltName, graduationLabel, maxStripes, nextBelt, stripesText, type BeltId } from "@/domain/belts"
 import { currentPayment, paymentBadge, type PaymentBadge } from "./view-helpers"
+import { ensureCurrentMonthPayments } from "./payment.service"
 import { TERM_VERSION, type TermSignerRole } from "@/domain/term"
 import { maskCpf } from "@/domain/cpf"
 import type { EnrollmentInput } from "@/lib/validations/enrollment"
@@ -53,6 +54,7 @@ export type StudentRow = {
 
 export async function listStudents() {
   const today = await requestToday()
+  await ensureCurrentMonthPayments(today)
   const [students, presence] = await Promise.all([studentRepository.list(), presenceIndex(today)])
   const monthStart = dateOnly(`${monthRef(today)}-01`)
 
@@ -88,9 +90,10 @@ export async function listStudents() {
 }
 
 export async function getStudentDetail(id: number) {
+  const today = await requestToday()
+  await ensureCurrentMonthPayments(today)
   const s = await studentRepository.findById(id)
   if (!s) return null
-  const today = await requestToday()
   const presence = await presenceIndex(today)
   const p = currentPayment(s.payments)
   const max = maxStripes(s.belt)

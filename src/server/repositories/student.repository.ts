@@ -36,6 +36,14 @@ export const studentRepository = {
     })
   },
 
+  /** Alunos ativos que ainda não têm mensalidade no mês, com o valor atual do plano */
+  listActiveWithoutPayment(reference: string) {
+    return db.student.findMany({
+      where: { status: "ativo", payments: { none: { reference } } },
+      select: { id: true, dueDay: true, plan: { select: { priceCents: true } } },
+    })
+  },
+
   /** Mesma pessoa matriculada duas vezes (vale para quem não tem CPF, como as crianças) */
   findByNameAndBirth(fullName: string, birthDate: Date) {
     return db.student.findFirst({ where: { fullName, birthDate }, select: { id: true, shortName: true } })
