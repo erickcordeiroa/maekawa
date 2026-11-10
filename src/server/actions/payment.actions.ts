@@ -10,6 +10,7 @@ const idSchema = z.number().int().positive()
 
 function refresh() {
   revalidatePath("/mensalidades")
+  revalidatePath("/financeiro")
   revalidatePath("/alunos", "layout")
 }
 

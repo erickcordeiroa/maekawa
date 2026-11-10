@@ -20,7 +20,21 @@ export const paymentRepository = {
     return db.payment.findUnique({ where: { id }, include: { student: true } })
   },
 
-  setPaidAt(id: number, paidAt: Date | null) {
-    return db.payment.update({ where: { id }, data: { paidAt }, include: { student: true } })
+  /** Marca como paga e lança a entrada no Financeiro na mesma operação (upsert: clicar duas vezes não duplica) */
+  markPaid(id: number, paidAt: Date, entry: { description: string; amountCents: number }) {
+    const transaction = { date: paidAt, kind: "entrada", category: "Mensalidades", ...entry }
+    return db.payment.update({
+      where: { id },
+      data: { paidAt, transaction: { upsert: { create: transaction, update: transaction } } },
+      include: { student: true },
+    })
+  },
+
+  /** Desfaz o pagamento e retira a entrada correspondente do Financeiro */
+  undoPaid(id: number) {
+    return db.$transaction([
+      db.transaction.deleteMany({ where: { paymentId: id } }),
+      db.payment.update({ where: { id }, data: { paidAt: null } }),
+    ])
   },
 }

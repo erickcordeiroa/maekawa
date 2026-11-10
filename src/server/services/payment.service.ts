@@ -6,6 +6,7 @@ import { addMonths, ddmm, monthLabel, monthRef, parseMonthRef } from "@/lib/date
 import { dueDateIn, paymentStatus, type PaymentStatus } from "@/domain/payments"
 import { paymentBadge, type PaymentBadge } from "./view-helpers"
 import { DomainError } from "@/server/errors"
+import { brl } from "@/lib/format"
 
 export type PaymentRow = {
   id: number
@@ -72,22 +73,36 @@ export async function monthOverview(ref?: string) {
 export async function markPaid(id: number) {
   const p = await paymentRepository.findById(id)
   if (!p) throw new DomainError("Mensalidade não encontrada.")
-  const updated = await paymentRepository.setPaidAt(id, await requestToday())
+  if (p.paidAt) return p.student.shortName
+  const [year, month] = p.reference.split("-")
+  const updated = await paymentRepository.markPaid(id, await requestToday(), {
+    description: `Mensalidade ${month}/${year} · ${p.student.shortName}`,
+    amountCents: p.amountCents,
+  })
   return updated.student.shortName
 }
 
 export async function undoPayment(id: number) {
   const p = await paymentRepository.findById(id)
   if (!p) throw new DomainError("Mensalidade não encontrada.")
-  await paymentRepository.setPaidAt(id, null)
+  await paymentRepository.undoPaid(id)
   return p.student.shortName
+}
+
+/** Chave Pix da academia (PIX_KEY no .env); PIX_NAME é o favorecido, para o aluno conferir antes de pagar */
+function chargeText(firstName: string, amountCents: number, dueDate: Date) {
+  const head = `Oss, ${firstName}! Sua mensalidade de ${brl(amountCents)} venceu em ${ddmm(dueDate)}.`
+  const key = process.env.PIX_KEY?.trim()
+  if (!key) return `${head} Quando puder, regularize com a recepção. Obrigado!`
+  const name = process.env.PIX_NAME?.trim()
+  return `${head}\n\nPara pagar via Pix, use a chave: ${key}${name ? ` (${name})` : ""}\n\nDepois é só enviar o comprovante por aqui. Obrigado!`
 }
 
 /** Texto pronto para cobrança no WhatsApp */
 export async function chargeMessage(id: number) {
   const p = await paymentRepository.findById(id)
   if (!p) throw new DomainError("Mensalidade não encontrada.")
-  const text = `Oss, ${p.student.shortName.split(" ")[0]}! Sua mensalidade venceu em ${ddmm(p.dueDate)}. Quando puder, regularize com a recepção. Obrigado!`
+  const text = chargeText(p.student.shortName.split(" ")[0], p.amountCents, p.dueDate)
   // Menor: quem paga é o responsável, então a cobrança vai para o contato dele
   const phone = p.student.guardianPhone || p.student.phone
   if (!phone) throw new DomainError(`${p.student.shortName} não tem telefone cadastrado.`)

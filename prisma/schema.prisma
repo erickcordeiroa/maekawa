@@ -112,6 +112,7 @@ model Payment {
   amountCents Int
   dueDate     DateTime
   paidAt      DateTime?
+  transaction Transaction? // entrada no Financeiro criada ao registrar o pagamento
 
   @@unique([studentId, reference])
   @@index([reference])
@@ -139,6 +140,8 @@ model Transaction {
   kind        String // entrada | saida
   category    String
   amountCents Int // sempre positivo; o sinal vem de `kind`
+  paymentId   Int?     @unique // preenchido quando a entrada vem de uma mensalidade paga
+  payment     Payment? @relation(fields: [paymentId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
 
   @@index([date])
