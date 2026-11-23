@@ -4,7 +4,7 @@ import { notFound } from "next/navigation"
 import { getStudentDetail } from "@/server/services/student.service"
 import { Card, CardTitle } from "@/components/ui/card"
 import { Avatar } from "@/components/brand/avatar"
-import { Belt, BeltDot } from "@/components/brand/belt"
+import { Belt } from "@/components/brand/belt"
 import { IconBack } from "@/components/brand/icons"
 import { PaymentBadge } from "@/components/brand/payment-badge"
 import { beltName, stripesText } from "@/domain/belts"
@@ -13,6 +13,8 @@ import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import { SIGNER_LABEL } from "@/domain/term"
 import { ConfirmEnrollmentButton, GraduationPanel } from "./graduation-panel"
+import { HistoryLaunchButton } from "./history-dialog"
+import { HistoryList } from "./history-list"
 
 export const metadata: Metadata = { title: "Aluno" }
 
@@ -20,6 +22,7 @@ export default async function AlunoPage({ params }: PageProps<"/alunos/[id]">) {
   const id = Number((await params).id)
   const s = Number.isInteger(id) ? await getStudentDetail(id) : null
   if (!s) notFound()
+  const today = todayISO()
 
   const data: [string, React.ReactNode, boolean?][] = [
     ["Nome completo", s.fullName],
@@ -124,26 +127,29 @@ export default async function AlunoPage({ params }: PageProps<"/alunos/[id]">) {
 
         <Card className="flex min-w-0 flex-[1_1_420px] flex-col gap-5">
           <CardTitle>Graduação</CardTitle>
-          <GraduationPanel studentId={s.id} canAddStripe={s.canAddStripe} belt={s.belt} stripes={s.stripes} nextBelt={s.nextBelt ? beltName(s.nextBelt) : null} defaultDate={todayISO()} />
+          <GraduationPanel
+            studentId={s.id}
+            canAddStripe={s.canAddStripe}
+            belt={s.belt}
+            stripes={s.stripes}
+            nextBelt={s.nextBelt ? beltName(s.nextBelt) : null}
+            defaultDate={today}
+            isKids={s.isKids}
+            birthISO={s.birthISO}
+            history={s.history}
+          />
           <div>
             <h3 className="mb-2.5 text-[15px] tracking-[1px] text-ink-muted">Histórico de graduações</h3>
-            <ol className="m-0 list-none p-0">
-              {s.history.map((h) => (
-                <li key={h.id} className="flex gap-3.5">
-                  <div className="flex w-4 flex-col items-center" aria-hidden>
-                    <BeltDot belt={h.belt} />
-                    <span className="w-0.5 flex-1 bg-[#E0E0E0]" />
-                  </div>
-                  <div className="flex flex-1 flex-wrap justify-between gap-x-3 gap-y-1 pb-4">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="font-bold">{h.label}</span>
-                      <span className="text-[13px] text-ink-quiet">Prof. Murilo K. Maekawa</span>
-                    </div>
-                    <span className="text-sm font-semibold">{h.date}</span>
-                  </div>
-                </li>
-              ))}
-            </ol>
+            {s.historyStartsAtSignup && (
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5 rounded-lg bg-gold-soft p-4 text-sm">
+                <div>
+                  <b className="block text-[15px]">O histórico começa no cadastro.</b>
+                  Tem as datas anteriores anotadas? Lance desde a primeira faixa.
+                </div>
+                <HistoryLaunchButton studentId={s.id} belt={s.belt} stripes={s.stripes} isKids={s.isKids} birthISO={s.birthISO} todayISO={today} history={s.history} variant="dark" />
+              </div>
+            )}
+            <HistoryList items={s.history} birthISO={s.birthISO} todayISO={today} />
           </div>
         </Card>
       </div>

@@ -6,7 +6,8 @@ import { attendanceRepository } from "@/server/repositories/attendance.repositor
 import { classGroupRepository, planRepository } from "@/server/repositories/catalog.repository"
 import { addDays, ageOn, dateOnly, ddmmyyyy, hhmm, instantDate, MONTHS, monthRef, relativeDay, toISO } from "@/lib/dates"
 import { formatPhone } from "@/lib/format"
-import { beltName, graduationLabel, maxStripes, nextBelt, stripesText, type BeltId } from "@/domain/belts"
+import { ADULT_ORDER, KIDS_ORDER, beltName, graduationLabel, maxStripes, nextBelt, stripesText, type BeltId } from "@/domain/belts"
+import { historyDateErrors, historyPath, moveDateError, singleDateError, startBeltOptions, stepLabel } from "@/domain/graduation-history"
 import { currentPayment, paymentBadge, type PaymentBadge } from "./view-helpers"
 import { ensureCurrentMonthPayments } from "./payment.service"
 import { TERM_VERSION, type TermSignerRole } from "@/domain/term"
@@ -98,6 +99,10 @@ export async function getStudentDetail(id: number) {
   const p = currentPayment(s.payments)
   const max = maxStripes(s.belt)
   const next = nextBelt(s.belt, s.isKids)
+  // Histórico em ordem cronológica (o repositório traz do mais recente para o mais antigo)
+  const chrono = [...s.graduations].reverse()
+  const first = chrono[0]
+  const since = first && first.date < s.memberSince ? first.date : s.memberSince
 
   return {
     id: s.id,
@@ -107,7 +112,7 @@ export async function getStudentDetail(id: number) {
     stripes: s.stripes,
     plan: s.plan.name,
     turma: s.classGroup?.name ?? "Sem turma",
-    since: ddmmyyyy(s.memberSince),
+    since: ddmmyyyy(since),
     birth: ddmmyyyy(s.birthDate),
     age: ageOn(s.birthDate, today),
     phone: s.phone ? formatPhone(s.phone) : null,
@@ -125,13 +130,30 @@ export async function getStudentDetail(id: number) {
     paymentMonth: MONTHS[today.getUTCMonth()].toLowerCase(),
     canAddStripe: s.stripes < max,
     nextBelt: next,
+    isKids: s.isKids,
+    birthISO: toISO(s.birthDate),
     history: s.graduations.map((g) => ({
       id: g.id,
+      kind: g.kind,
       label: graduationLabel(g.kind, g.belt, g.stripes),
       date: ddmmyyyy(g.date),
+      dateISO: toISO(g.date),
       belt: g.belt as BeltId,
+      stripes: g.stripes,
     })),
+    historyStartsAtSignup: startsAtSignup(s),
   }
+}
+
+/**
+ * O histórico só tem o "início" gravado no cadastro, e o aluno já chegou graduado:
+ * as datas anteriores (que o professor tem anotadas) ainda não foram lançadas.
+ */
+function startsAtSignup(s: StudentDetailRecord) {
+  if (s.graduations.length !== 1) return false
+  const g = s.graduations[0]
+  const order = s.isKids ? KIDS_ORDER : ADULT_ORDER
+  return g.kind === "inicio" && toISO(g.date) === toISO(s.memberSince) && (g.stripes > 0 || order.indexOf(g.belt as BeltId) > 0)
 }
 
 function termView(t: StudentDetailRecord["terms"][number] | undefined) {
@@ -149,10 +171,23 @@ function termView(t: StudentDetailRecord["terms"][number] | undefined) {
 
 export type StudentDetail = NonNullable<Awaited<ReturnType<typeof getStudentDetail>>>
 
+/**
+ * Novo grau ou promoção entra depois do último lançamento do histórico.
+ * Data antiga (do caderno) vai por "Lançar histórico", que remonta tudo em ordem.
+ */
+async function assertNextGraduationDate(s: StudentDetailRecord, dateISO: string) {
+  const err = singleDateError(dateISO, { birthISO: toISO(s.birthDate), todayISO: toISO(await requestToday()) })
+  if (err) throw new DomainError(err)
+  const last = s.graduations[0]
+  if (last && dateISO < toISO(last.date))
+    throw new DomainError(`A data é anterior ao último lançamento do histórico (${ddmmyyyy(last.date)}). Para registrar datas antigas, use “Lançar histórico”.`)
+}
+
 export async function addStripe(id: number, dateISO: string) {
   const s = await studentRepository.findById(id)
   if (!s) throw new DomainError("Aluno não encontrado.")
   if (s.stripes >= maxStripes(s.belt)) throw new DomainError("Grau máximo atingido nesta faixa. O próximo passo é a promoção.")
+  await assertNextGraduationDate(s, dateISO)
   const stripes = s.stripes + 1
   await studentRepository.graduate(id, { belt: s.belt, stripes, kind: "grau", date: dateOnly(dateISO) })
   return `${stripes}º grau registrado para ${s.shortName}`
@@ -169,9 +204,12 @@ export async function correctBelt(id: number, belt: BeltId, stripes: number) {
   if (stripes > maxStripes(belt)) throw new DomainError("Essa faixa não tem tantos graus.")
   if (s.belt === belt && s.stripes === stripes) throw new DomainError("O aluno já está nessa faixa e com esses graus.")
 
-  const match = s.graduations.filter((g) => g.belt === belt && g.stripes === stripes).sort((a, b) => b.id - a.id)[0]
-  const history = match
-    ? { undo: s.graduations.filter((g) => g.id > match.id).map((g) => g.id) }
+  // Ordem cronológica (data e, no mesmo dia, ordem de lançamento): com o histórico lançado
+  // do caderno, o id não segue mais a ordem real das graduações.
+  const chrono = [...s.graduations].reverse()
+  const at = chrono.findLastIndex((g) => g.belt === belt && g.stripes === stripes)
+  const history = at >= 0
+    ? { undo: chrono.slice(at + 1).map((g) => g.id) }
     : { record: await requestToday() }
   await studentRepository.correctBelt(id, { belt, stripes }, history)
   return `${s.shortName} agora está na faixa ${beltName(belt)} · ${stripesText(stripes)}`
@@ -182,8 +220,47 @@ export async function promote(id: number, dateISO: string) {
   if (!s) throw new DomainError("Aluno não encontrado.")
   const nb = nextBelt(s.belt, s.isKids)
   if (!nb) throw new DomainError("Não há próxima faixa para este aluno.")
+  await assertNextGraduationDate(s, dateISO)
   await studentRepository.graduate(id, { belt: nb, stripes: 0, kind: "promocao", date: dateOnly(dateISO) })
   return { name: s.shortName, belt: nb }
+}
+
+/**
+ * Lança o histórico do caderno: os passos do início até a faixa atual, com as datas anotadas.
+ * O caminho é montado aqui (não vem da tela), então a faixa e os graus atuais não mudam.
+ */
+export async function replaceHistory(id: number, startBelt: BeltId, dates: string[]) {
+  const s = await studentRepository.findById(id)
+  if (!s) throw new DomainError("Aluno não encontrado.")
+  const belt = s.belt as BeltId
+  if (!startBeltOptions(belt, s.isKids).includes(startBelt)) throw new DomainError("Escolha uma faixa de início até a faixa atual do aluno.")
+  const steps = historyPath(startBelt, belt, s.stripes, s.isKids)
+  if (steps.length !== dates.length) throw new DomainError("A faixa do aluno mudou enquanto você preenchia. Feche e abra de novo o lançamento.")
+
+  const limits = { birthISO: toISO(s.birthDate), todayISO: toISO(await requestToday()) }
+  const errors = historyDateErrors(steps, dates, limits)
+  const bad = errors.findIndex(Boolean)
+  if (bad >= 0) throw new DomainError(`${stepLabel(steps[bad])}: ${errors[bad]}`)
+
+  const kept = steps.flatMap((step, i) => (dates[i] ? [{ ...step, date: dateOnly(dates[i]) }] : []))
+  if (!kept.length) throw new DomainError("Preencha a data de pelo menos um passo.")
+  await studentRepository.replaceHistory(id, kept)
+  return `Histórico de ${s.shortName} salvo com ${kept.length} ${kept.length === 1 ? "lançamento" : "lançamentos"}`
+}
+
+/** Ajusta a data de um lançamento, sem tirá-lo da ordem do histórico */
+export async function moveGraduationDate(graduationId: number, dateISO: string) {
+  const g = await studentRepository.findGraduation(graduationId)
+  if (!g) throw new DomainError("Lançamento não encontrado.")
+  const s = await studentRepository.findById(g.studentId)
+  if (!s) throw new DomainError("Aluno não encontrado.")
+  const chrono = [...s.graduations].reverse()
+  const i = chrono.findIndex((x) => x.id === graduationId)
+  const near = (x: (typeof chrono)[number] | undefined) => x && { label: graduationLabel(x.kind, x.belt, x.stripes), dateISO: toISO(x.date) }
+  const err = moveDateError(dateISO, { prev: near(chrono[i - 1]), next: near(chrono[i + 1]) }, { birthISO: toISO(s.birthDate), todayISO: toISO(await requestToday()) })
+  if (err) throw new DomainError(err)
+  await studentRepository.updateGraduationDate(graduationId, dateOnly(dateISO))
+  return { studentId: s.id, message: `Data de “${graduationLabel(chrono[i].kind, chrono[i].belt, chrono[i].stripes)}” alterada para ${ddmmyyyy(dateOnly(dateISO))}` }
 }
 
 export type RequestMeta = { ip: string | null; userAgent: string | null }

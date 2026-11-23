@@ -77,6 +77,22 @@ export const studentRepository = {
     ])
   },
 
+  /** Troca todo o histórico do aluno pelos passos lançados do caderno (faixa atual não muda) */
+  replaceHistory(id: number, steps: { kind: string; belt: string; stripes: number; date: Date }[]) {
+    return db.$transaction([
+      db.graduation.deleteMany({ where: { studentId: id } }),
+      db.graduation.createMany({ data: steps.map((s) => ({ studentId: id, ...s })) }),
+    ])
+  },
+
+  findGraduation(id: number) {
+    return db.graduation.findUnique({ where: { id }, select: { id: true, studentId: true } })
+  },
+
+  updateGraduationDate(id: number, date: Date) {
+    return db.graduation.update({ where: { id }, data: { date } })
+  },
+
   /**
    * Correção de faixa/graus, na mesma transação:
    * - `undo`: a faixa já existiu no histórico, então os registros lançados depois dela são apagados;
