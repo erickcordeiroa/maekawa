@@ -3,10 +3,28 @@
 import { revalidatePath } from "next/cache"
 import { headers } from "next/headers"
 import { z } from "zod"
-import { beltCorrectionSchema, graduationSchema, type BeltCorrectionFormValues, type GraduationInput } from "@/lib/validations/graduation"
+import {
+  beltCorrectionSchema,
+  graduationDateSchema,
+  graduationSchema,
+  historySchema,
+  type BeltCorrectionFormValues,
+  type GraduationDateInput,
+  type GraduationInput,
+  type HistoryInput,
+} from "@/lib/validations/graduation"
 import { enrollmentSchema, type EnrollmentFormValues } from "@/lib/validations/enrollment"
 import { studentEditSchema, type StudentEditFormValues } from "@/lib/validations/student"
-import { addStripe, confirmEnrollment, correctBelt, promote, registerEnrollment, updateStudent } from "@/server/services/student.service"
+import {
+  addStripe,
+  confirmEnrollment,
+  correctBelt,
+  moveGraduationDate,
+  promote,
+  registerEnrollment,
+  replaceHistory,
+  updateStudent,
+} from "@/server/services/student.service"
 import { requireSession } from "@/server/auth/session"
 import { beltName } from "@/domain/belts"
 import { runAction, type ActionResult } from "./result"
@@ -51,6 +69,25 @@ export async function correctBeltAction(input: BeltCorrectionFormValues): Promis
     const message = await correctBelt(studentId, belt, stripes)
     revalidatePath(`/alunos/${studentId}`)
     revalidatePath("/alunos")
+    return { ok: true, message }
+  })
+}
+
+/** Histórico lançado do caderno do professor (faixa atual não muda) */
+export async function replaceHistoryAction(input: HistoryInput): Promise<ActionResult> {
+  await requireSession()
+  return runAction(historySchema, input, async ({ studentId, startBelt, steps }) => {
+    const message = await replaceHistory(studentId, startBelt, steps.map((s) => s.date))
+    revalidatePath(`/alunos/${studentId}`)
+    return { ok: true, message }
+  })
+}
+
+export async function moveGraduationDateAction(input: GraduationDateInput): Promise<ActionResult> {
+  await requireSession()
+  return runAction(graduationDateSchema, input, async ({ graduationId, date }) => {
+    const { studentId, message } = await moveGraduationDate(graduationId, date)
+    revalidatePath(`/alunos/${studentId}`)
     return { ok: true, message }
   })
 }
